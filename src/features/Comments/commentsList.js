@@ -1,0 +1,2 @@
+<CommentsList permalink={post.permalink} />
+
