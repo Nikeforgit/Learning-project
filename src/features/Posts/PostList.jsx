@@ -30,7 +30,12 @@ export default function PostList() {
 
     if (bottom && !loading && after && !isFetching.current) {
       isFetching.current = true;
-      dispatch(fetchSubRedditPosts({ permalink }));
+      dispatch(
+        fetchSubRedditPosts({
+          subreddit: currentSubreddit,
+          after,
+        })
+      );
     }
   };
 

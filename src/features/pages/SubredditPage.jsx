@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-
-import { fetchSubRedditPosts } from "../../store/redditSlice";
+import { clearPosts, fetchSubRedditPosts } from "../../store/redditSlice";
 import PostList from "../Posts/PostList";
 
 
@@ -15,6 +14,7 @@ export default function SubredditPage({ defaultSubreddit }) {
   const loading = useSelector((state) => state.reddit.loading);
 
   useEffect(() => {
+    dispatch(clearPosts());
     dispatch(fetchSubRedditPosts({ subreddit }));
   }, [dispatch, subreddit]);
 
