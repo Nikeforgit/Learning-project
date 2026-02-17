@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../App/App.css";
 
 export default function Comment({ comment, depth = 0 }) {
     const [collapsed, setCollapsed] = useState(false);
@@ -30,7 +31,7 @@ export default function Comment({ comment, depth = 0 }) {
                     </span>
                 )}
             </div>
-            {!collapsed && <p>{comment.body}</p>}
+            {!collapsed && (<p className="comment-body">{comment.body}</p>)}
             {!collapsed && replies.length > 0 && (
                 <ul style={{ listStyle: "none", paddingLeft: 0 }}>
                     {replies.map(reply => (

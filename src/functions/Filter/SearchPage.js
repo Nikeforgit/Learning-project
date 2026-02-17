@@ -1,31 +1,45 @@
-import React, { useState } from "react";
-import Search from "./search";
+
+import { useEffect, useMemo } from "react";
+import { fetchSearchResult }  from "./searchSlice";
+import Card from "../../features/Card/Card";
+import { useSearchParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { createIndex, sEngine } from "./sEngine";
-import { Circle } from "../circle";
 
-function createInitialData() {
-    const initialData = [];
-    for (let i = 0; i < 10; i++){
-    initialData.push({
-        id: i,
-        title: `${i}`,
-        tags: [""]
-    });
-    }
-    return initialData;
-};
+export default function SearchPage() {
+    const [params] = useSearchParams();
+    const query = params.get("q");
+    const dispatch = useDispatch();
+    const { apiPosts, loading } = useSelector(state => state.search);
+    const localPosts = useSelector(state => state.reddit.posts);
+    useEffect(() => {
+        if (query) {
+            dispatch(fetchSearchResult(query));
+        }
+    },[dispatch, query]);
+    const results = useMemo(() => {
+        if (!query) return [];
+        const merged = [...apiPosts, ...localPosts];
+        const unique = Array.from(
+            new Map(merged.map(p => [p.id, p])).values()
+        );
+        const index = createIndex(unique);
+        const localIdsSet = new Set(localPosts.map(p => p.id));
 
-export function SearchPage() {
-    const [searchFill, setSearchFill] = useState(createInitialData);
-    const [text, setText] = useState("");
-    const result = [];
+        const localIds = new Set(
+        unique
+         .map((p, i) => localIdsSet.has(p.id) ? i : null)
+         .filter(i => i !== null)
+    );
+        return sEngine(query, index, unique, localIds, "OR");
+    }, [query, apiPosts, localPosts]);
     return (
-        <div>
-        <input value={text}
-        onChange={e => setText(e.target.value)} Search={e.text.value}/>
-        <div createIndex={e.target.value} sEngine={Search}>{Circle}</div>
-        </div>
-    )
+        <main>
+        <h2>Search results for "{query}"</h2>
+        {loading && <p>Loading...</p>}
+        {results.map(post => (
+            <Card key={post.id} post={post} />
+        ))}
+        </main>
+    );
 };
-
-export default SearchPage;

@@ -1,28 +1,24 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { useNavigate, createSearchParams } from "react-router-dom";
 
-const Search = () => {
+function Search() {
     const navigate = useNavigate();
     const searchInputRef = useRef();
     const onSearchHandler = (e) => {
         e.preventDefault();
-        const searchQuerry = {
-            name: searchInputRef.current.value
-        }
-        const query = createSearchParams(searchQuerry);
+        const value = searchInputRef.current.value.trim();
+        if (!value) return;
         navigate ({ 
             pathname: '/search',
-            search: `?${query}`
-        })
+            search: `?${createSearchParams({ q: value })}`,
+        });
     };
     return (
         <form onSubmit={onSearchHandler} className="search-form">
-            <input type="text" className="search" ref={searchInputRef} />
-            <button type="submit" className="search-button">
-
-            </button>
+            <input ref={searchInputRef} placeholder="Search..." />
+            <button type="submit">Search</button>
         </form>
     );
-};
+}
 
 export default Search;

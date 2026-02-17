@@ -1,0 +1,52 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: flex-end;
+    z-index: 1000;
+}
+
+.overlay-content {
+    width: 420px;
+    max-width: 95%;
+    height: 100%;
+    background: white;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: -4px 0 10px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.25 ease-out;
+}
+
+.close-button {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    } to {
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .overlay {
+        justify-content: center;
+        align-items: flex-end;
+    }
+    .overlay-content {
+        width: 100%;
+        height: 80%;
+        border-radius: 16px 16px 0 0;
+        animation: slideInBottom 0.25s ease-out;
+    }
+    @keyframes slideInBottom {
+        from { transform: translateY(100%);}
+        to { transform: translateY(0);}
+    }
+}

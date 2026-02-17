@@ -6,6 +6,7 @@ export const fetchComments = createAsyncThunk(
         const response = await fetch(`${permalink}.json`);
         const json = await response.json();
         return {
+            post: json[0].data.children[0].data,
             comments: json[1].data.children,
             permalink,
         };
@@ -16,6 +17,7 @@ export const commentsSlice = createSlice({
     name: "comments",
     initialState: {
         byPermalink: {},
+        postsByPermalink: {},
         loading: false,
         error: null,
         currentPermalink: null,
@@ -32,6 +34,7 @@ export const commentsSlice = createSlice({
             if (state.currentPermalink !== action.payload.permalink) return;
             state.loading = false;
             state.byPermalink[action.payload.permalink] = action.payload.comments;
+            state.postsByPermalink[action.payload.permalink] = action.payload.post;
         })
         .addCase(fetchComments.rejected, (state, action) => {
             state.loading = false;
