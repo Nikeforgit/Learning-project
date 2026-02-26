@@ -3,11 +3,12 @@
     inset: 0;
     background: rgba(0,0,0,0.4);
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     z-index: 1000;
 }
 
 .overlay-content {
+    position: relative;
     width: 420px;
     max-width: 95%;
     height: 100%;
@@ -15,15 +16,29 @@
     padding: 20px;
     overflow-y: auto;
     box-shadow: -4px 0 10px rgba(0, 0, 0, 0.2);
-    animation: slideIn 0.25 ease-out;
+    animation: slideIn 0.25s ease-out;
+}
+
+.overlay-content.closing {
+    animation: slideOut 0.25s ease-in forwards;
+}
+
+.overlay.closing {
+    animation: fadeOut 0.25s ease-in forwards;
 }
 
 .close-button {
-    border: none;
-    background: none;
-    font-size: 20px;
+    position: absolute;
+    max-height: 100%;
+    right: 16px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: white;
+    font-size: 22px;
     cursor: pointer;
     margin-bottom: 10px;
+    z-index: 2000;
 }
 
 @keyframes slideIn {
@@ -32,6 +47,20 @@
     } to {
         transform: translateX(0);
     }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes fadeOut {
+    from {background: rgba(0,0,0,0.4);}
+    to { background: rgba(0, 0, 0, 0);}
 }
 
 @media (max-width: 768px) {

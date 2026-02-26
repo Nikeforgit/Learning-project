@@ -2,7 +2,6 @@ import { Routes , Route } from "react-router-dom";
 import FeedPage from "../pages/FeedPage";
 import SubredditPage from "../pages/SubredditPage";
 import PostPage from "../pages/PostPage";
-import SearchPage from "../../functions/Filter/SearchPage";
 
 
 export default function AppRoutes() {
@@ -13,7 +12,7 @@ export default function AppRoutes() {
             <Route 
             path="/r/:subreddit/comments/:postId"
             element={<PostPage />}/>
-            <Route path="/search" element={< SearchPage/>} />
+            <Route path="/r/:subreddit/comments/:postId" element={<PostPage />} />
         </Routes>
     );
 }
