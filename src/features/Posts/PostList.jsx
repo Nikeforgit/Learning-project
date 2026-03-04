@@ -83,12 +83,10 @@ export default function PostList() {
   }, [dispatch, isSearchMode, isSubredditMode, query, sort, t, subreddit]);
 
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [handleScroll]);
+  const handler = handleScroll;
+  window.addEventListener("scroll", handler);
+  return () => window.removeEventListener("scroll", handler);
+}, [handleScroll]);
 
   if (loading && posts.length === 0) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;

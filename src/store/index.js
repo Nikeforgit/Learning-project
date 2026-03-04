@@ -3,7 +3,7 @@ import redditReducer from "./redditSlice.js";
 import subRedditsSlice from "./subRedditsSlice.js"
 import commentsReducer from "../features/Comments/commentsSlice.js";
 import searchReducer from "../functions/Filter/searchSlice.js";
-
+import cardReducer from "../features/Card/cardSlice.js";
 
 const store = configureStore({
   reducer: {
@@ -11,6 +11,7 @@ const store = configureStore({
     subReddits: subRedditsSlice,
     comments: commentsReducer,
     search: searchReducer,
+    card: cardReducer
   }
 });
 export default store;

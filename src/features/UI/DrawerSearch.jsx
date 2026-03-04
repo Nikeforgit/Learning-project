@@ -47,8 +47,8 @@ export default function DrawerSearch() {
             </div>
             <div className={StyleSheet.segment}>
                 {["all", "day", 'week', "month", "year"].map(option => (
-                    <button key={option} className={`${styles.segmentItem} ${sort === option ? styles.active : ""}`}
-                    onClick={() => setSort(option)}>
+                    <button key={option} className={`${styles.segmentItem} ${t === option ? styles.active : ""}`}
+                    onClick={() => setT(option)}>
                         {option}
                     </button>
                 ))}
