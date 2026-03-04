@@ -2,10 +2,10 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 export const fetchSubRedditPosts = createAsyncThunk(
   "reddit/fetchSubRedditPosts",
-  async ({ subreddit, after, query, sort = "relevance", t ="all", after }) => {
-    let url;
-      ? `/r/${subreddit}.json?after=${after}`
-      : `/r/${subreddit}.json`;
+  async ({ subreddit, after }) => {
+    const url = after
+  ? `/r/${subreddit}.json?after=${after}`
+  : `/r/${subreddit}.json`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);

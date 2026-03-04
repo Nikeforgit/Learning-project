@@ -3,10 +3,10 @@ import { useSelector } from "react-redux";
 import Card from "./Card";
 
 export default function CardList() {
-    const cardIds = useSelector(state => state.card.allIds);
+    const posts = useSelector(state => state.card.card);
     return (
         <ul>
-            {cardIds.map(id => (
+            {posts.map(id => (
                 <Card key={id} id={id} />
             ))}
         </ul>
