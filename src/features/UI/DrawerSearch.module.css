@@ -1,0 +1,27 @@
+.segment {
+    display: flex;
+    background: #2a2a2a;
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.segmentItem {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: "white";
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.segmentItem:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.active {
+    background: #ff4500;
+    color: white;
+}

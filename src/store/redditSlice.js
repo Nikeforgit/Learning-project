@@ -2,10 +2,10 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 export const fetchSubRedditPosts = createAsyncThunk(
   "reddit/fetchSubRedditPosts",
-  async ({ subreddit, after }) => {
-    const url = after
-  ? `/r/${subreddit}.json?after=${after}`
-  : `/r/${subreddit}.json`;
+  async ({ subreddit, after, query, sort = "relevance", t ="all", after }) => {
+    let url;
+      ? `/r/${subreddit}.json?after=${after}`
+      : `/r/${subreddit}.json`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);
@@ -14,7 +14,25 @@ export const fetchSubRedditPosts = createAsyncThunk(
     return {
       posts: json.data.children.map(c => c.data),
       after: json.data.after,
-      subreddit, 
+      subreddit,
+    };
+  }
+);
+
+export const fetchSearchPosts = createAsyncThunk(
+  "reddit/fetchSearchPosts",
+  async ({ query, sort = "relevance", t = "all", after }) => {
+    const base = `/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}`;
+    const url = after ? `${base}&after=${after}` : base;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+    }
+    const json = await res.json();
+    return {
+      posts: json.data.children.map(c => c.data),
+      after: json.data.after,
+      subreddit: `search|${query}|${sort}|${t}`,
     };
   }
 );
@@ -39,33 +57,62 @@ const redditSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSubRedditPosts.pending, (state, action) => {
-        const subreddit = action.meta.arg.subreddit;
+  const subreddit = action.meta.arg.subreddit;
+
+  if (state.currentSubreddit !== subreddit) {
+    state.posts = [];
+    state.after = null;
+    state.currentSubreddit = subreddit;
+  }
+
+  state.loading = true;
+  state.error = null;
+})
+      .addCase(fetchSubRedditPosts.fulfilled, (state, action) => {
+  state.loading = false;
+
+  if (state.currentSubreddit !== action.payload.subreddit) return;
+
+  const existingIds = new Set(state.posts.map(p => p.id));
+
+  action.payload.posts.forEach(post => {
+    if (!existingIds.has(post.id)) {
+      state.posts.push(post);
+    }
+  });
+
+  state.after = action.payload.after;
+})
+      .addCase(fetchSubRedditPosts.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.error.message;
+      })
+      .addCase(fetchSearchPosts.pending, (state, action) => {
+        const { query, sort = "relevance", t = "all" } = action.meta.arg;
+        const subreddit = `search|${query}|${sort}|${t}`;
         if (state.currentSubreddit !== subreddit) {
-          state.posts = [];
-          state.after = null;
-          state.currentSubreddit = subreddit;
+        state.posts = [];
+        state.after = null;
+        state.currentSubreddit = subreddit;
         }
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchSubRedditPosts.fulfilled, (state, action) => {
+      .addCase(fetchSearchPosts.fulfilled, (state, action) => {
         state.loading = false;
-
-        const subreddit = action.payload.subreddit;
-        if (state.currentSubreddit !== subreddit) return;
+        if (state.currentSubreddit !== action.payload.subreddit) return;
         const existingIds = new Set(state.posts.map(p => p.id));
         action.payload.posts.forEach(post => {
           if (!existingIds.has(post.id)) {
             state.posts.push(post);
           }
         });
-
         state.after = action.payload.after;
       })
-      .addCase(fetchSubRedditPosts.rejected, (state, action) => {
-          state.loading = false;
-          state.error = action.error.message;
-      });
+      .addCase(fetchSearchPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
   },
 });
 

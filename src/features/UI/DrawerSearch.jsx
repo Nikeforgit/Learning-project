@@ -1,29 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { createIndex, sEngine } from "../../functions/Filter/sEngine.js";
-import { fetchSearchResult } from "../../functions/Filter/searchSlice.js";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import styles from './DrawerSearch.module.css';
 
 export default function DrawerSearch() {
     const [query, setQuery] = useState("");
-    const redditPosts = useSelector(state => state.reddit.posts);
-    const { apiPosts, loading } = useSelector(state => state.search);
-    const posts = apiPosts.length ? apiPosts : redditPosts;
-    const index = useMemo(() => createIndex(posts), [posts]);
+    const [sort, setSort] = useState("best")
+    const [t, setT] = useState("all");
     const navigate = useNavigate();
-    const results = useMemo(() => {
-        if (!query.trim()) return [];
-        if (apiPosts.length) {
-            return apiPosts;
-        }
-        return sEngine(query, index, redditPosts);
-    }, [query, index, posts, redditPosts]);
-    const dispatch = useDispatch();
     const handleSubmit = (e) => {
         e.preventDefault();
         const trimmed = query.trim();
         if (!trimmed) return;
-        navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+        const params = new URLSearchParams({
+            q: query.trim(),
+            sort,
+            t
+        });
+        navigate(`/?${params.toString()}`);
     };
     return (
         <div style={{ maxWidth: 400 }}>
@@ -33,8 +26,7 @@ export default function DrawerSearch() {
                 display: "flex",
                 gap: 8,
                 marginBottom: 16
-            }}
-            >
+            }}>
             <input
             value={query}
             onChange={e => setQuery(e.target.value)}
@@ -44,8 +36,23 @@ export default function DrawerSearch() {
                 padding: 8,
                 borderRadius: 6,
                 border: "1px solid #ccc"
-            }}
-            />
+            }}/>
+            <div className={StyleSheet.segment}>
+                {["best", "hot", 'new', "top", "rising"].map(option => (
+                    <button key={option} className={`${styles.segmentItem} ${sort === option ? styles.active : ""}`}
+                    onClick={() => setSort(option)}>
+                        {option}
+                    </button>
+                ))}
+            </div>
+            <div className={StyleSheet.segment}>
+                {["all", "day", 'week', "month", "year"].map(option => (
+                    <button key={option} className={`${styles.segmentItem} ${sort === option ? styles.active : ""}`}
+                    onClick={() => setSort(option)}>
+                        {option}
+                    </button>
+                ))}
+            </div>
             <button type="submit"
             style={{
                 padding: "8px 12px",
@@ -54,13 +61,8 @@ export default function DrawerSearch() {
                 background: "#007bff",
                 color: "white",
                 cursor: "pointer"
-            }}>
-                Go!
-            </button>
+            }}>Go!</button>
             </form>
-            <div style={{ maxHeight: "70vh", overflowY: "auto"}}>
-            
-            </div>
         </div>
     );
 }

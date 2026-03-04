@@ -12,7 +12,6 @@ export default function AppRoutes() {
             <Route 
             path="/r/:subreddit/comments/:postId"
             element={<PostPage />}/>
-            <Route path="/r/:subreddit/comments/:postId" element={<PostPage />} />
         </Routes>
     );
 }
