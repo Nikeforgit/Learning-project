@@ -4,8 +4,8 @@ export const fetchSubRedditPosts = createAsyncThunk(
   "reddit/fetchSubRedditPosts",
   async ({ subreddit, after }) => {
     const url = after
-  ? `/r/${subreddit}.json?after=${after}`
-  : `/r/${subreddit}.json`;
+      ? `/r/${subreddit}.json?after=${after}`
+      : `/r/${subreddit}.json`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);
@@ -57,32 +57,24 @@ const redditSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSubRedditPosts.pending, (state, action) => {
-  const subreddit = action.meta.arg.subreddit;
-
-  if (state.currentSubreddit !== subreddit) {
-    state.posts = [];
-    state.after = null;
-    state.currentSubreddit = subreddit;
-  }
-
-  state.loading = true;
-  state.error = null;
-})
+         const {subreddit, after} = action.meta.arg;
+         if (!after && state.currentSubreddit !== subreddit) {
+         state.posts = [];
+         state.after = null;
+         state.currentSubreddit = subreddit;
+      }
+         state.loading = true;
+         state.error = null;
+      })
       .addCase(fetchSubRedditPosts.fulfilled, (state, action) => {
-  state.loading = false;
-
-  if (state.currentSubreddit !== action.payload.subreddit) return;
-
-  const existingIds = new Set(state.posts.map(p => p.id));
-
-  action.payload.posts.forEach(post => {
-    if (!existingIds.has(post.id)) {
-      state.posts.push(post);
-    }
-  });
-
-  state.after = action.payload.after;
-})
+         state.loading = false;
+         if (state.currentSubreddit !== action.payload.subreddit) return;
+         const existingIds = new Set(state.posts.map(p => p.id));
+         state.posts.push(
+          ...action.payload.posts.filter(p => !existingIds.has(p.id))
+        );
+        state.after = action.payload.after;
+      })
       .addCase(fetchSubRedditPosts.rejected, (state, action) => {
           state.loading = false;
           state.error = action.error.message;
@@ -102,11 +94,9 @@ const redditSlice = createSlice({
         state.loading = false;
         if (state.currentSubreddit !== action.payload.subreddit) return;
         const existingIds = new Set(state.posts.map(p => p.id));
-        action.payload.posts.forEach(post => {
-          if (!existingIds.has(post.id)) {
-            state.posts.push(post);
-          }
-        });
+        state.posts.push(
+          ...action.payload.posts.filter(p => !existingIds.has(p.id))
+        );
         state.after = action.payload.after;
       })
       .addCase(fetchSearchPosts.rejected, (state, action) => {

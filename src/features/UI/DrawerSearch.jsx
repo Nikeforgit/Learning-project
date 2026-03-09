@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from './DrawerSearch.module.css';
 
@@ -9,60 +9,69 @@ export default function DrawerSearch() {
     const navigate = useNavigate();
     const handleSubmit = (e) => {
         e.preventDefault();
-        const trimmed = query.trim();
+        const trimmed = (query || "").trim();
         if (!trimmed) return;
         const params = new URLSearchParams({
-            q: query.trim(),
+            q: trimmed,
             sort,
             t
         });
         navigate(`/?${params.toString()}`);
     };
+    useEffect(() => {
+        const trimmed = (query || "").trim();
+        if (!trimmed) return;
+        const params = new URLSearchParams({
+            q: trimmed,
+            sort,
+            t
+        });
+        navigate(`/?${params.toString()}`, { replace: true });
+    }, [sort, t]);
+    const isTimeEnabled = ["top", "controversial"].includes(sort);
     return (
-        <div style={{ maxWidth: 400 }}>
+        <div className={ styles.container }>
             <form
             onSubmit={handleSubmit}
-            style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 16
-            }}>
+            className={styles.searchRow}>
             <input
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search..."
-            style={{
-                flex: 1,
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #ccc"
-            }}/>
-            <div className={StyleSheet.segment}>
-                {["best", "hot", 'new', "top", "rising"].map(option => (
-                    <button key={option} className={`${styles.segmentItem} ${sort === option ? styles.active : ""}`}
+            className={styles.input} />
+            <button type="submit" className={styles.goButton}>Go!</button>
+            </form>
+            <div className={styles.filters}>
+            <div className={styles.segment}>
+                {["best", "hot", 'new', "top", "rising", "controversial"].map(option => (
+                    <button
+                     type="button"
+                      key={option}
+                       className={
+                        `${styles.segmentItem}
+                         ${sort === option ? styles.active : ""}`
+                        }
                     onClick={() => setSort(option)}>
                         {option}
                     </button>
                 ))}
             </div>
-            <div className={StyleSheet.segment}>
+            <div className={styles.segment}>
                 {["all", "day", 'week', "month", "year"].map(option => (
-                    <button key={option} className={`${styles.segmentItem} ${t === option ? styles.active : ""}`}
-                    onClick={() => setT(option)}>
+                    <button
+                     type="button"
+                      key={option}
+                       className={
+                        `${styles.segmentItem}
+                         ${isTimeEnabled && t === option ? styles.active : ""}
+                          ${!isTimeEnabled ? styles.disabled : ""}`
+                          }
+                    onClick={isTimeEnabled ? () => setT(option) : undefined}>
                         {option}
                     </button>
                 ))}
             </div>
-            <button type="submit"
-            style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "none",
-                background: "#007bff",
-                color: "white",
-                cursor: "pointer"
-            }}>Go!</button>
-            </form>
         </div>
+    </div>
     );
 }
