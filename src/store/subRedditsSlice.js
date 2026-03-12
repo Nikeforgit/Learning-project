@@ -9,6 +9,16 @@ export const fetchSubreddits = createAsyncThunk(
     }
 );
 
+export const searchSubreddits = createAsyncThunk(
+    "subreddits/search",
+    async (query) => {
+        const res = await fetch(`/subreddits/search.json?q=${query}&limit=5`);
+        const json = await res.json();
+
+        return json.data.children.map(c => data);
+    }
+);
+
 export const subRedditsSlice = createSlice({
     name: "subReddits",
     initialState: {

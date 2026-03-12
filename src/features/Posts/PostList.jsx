@@ -15,14 +15,28 @@ export default function PostList() {
   const isFetching = useRef(false);
   const isSearchMode = Boolean(query);
   const isSubredditMode = Boolean(subreddit);
+  const subredditFilter = searchParams.get("subreddit");
 
   useEffect(() => {
-    if (isSearchMode) {
-      dispatch(fetchSearchPosts({ query, sort, t, after }));
-    } else {
-      dispatch(fetchSubRedditPosts({ subreddit: isSearchMode ? subreddit : "popular", after }));
-    }
-  }, [dispatch, query, sort, t, subreddit]);
+  if (isSearchMode) {
+    dispatch(fetchSearchPosts({
+      query,
+      sort,
+      t,
+      subreddit: subredditFilter
+    }));
+  }
+  else if (isSubredditMode) {
+    dispatch(fetchSubRedditPosts({
+      subreddit
+    }));
+  }
+  else {
+    dispatch(fetchSubRedditPosts({
+      subreddit: "popular"
+    }));
+  }
+}, [dispatch, query, sort, t, subreddit, subredditFilter]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,7 +51,8 @@ export default function PostList() {
           query,
           sort,
           t,
-          after
+          after,
+          subreddit: subredditFilter
         }));
       } else if (isSubredditMode) {
         dispatch(fetchSubRedditPosts({
@@ -54,7 +69,7 @@ export default function PostList() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [dispatch, loading, after, query, sort, t, subreddit]);
+  }, [dispatch, query, sort, t, subreddit, subredditFilter]);
 
   useEffect(() => {
     if (!loading) {

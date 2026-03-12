@@ -3,6 +3,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    position: relative;
+    overflow: visible;
 }
 
 .searchRow {
@@ -37,7 +39,7 @@
     gap: 6px;
 }
 
-.segmentitem {
+.segmentItem {
     padding: 6px 10px;
     border-radius: 6px;
     border: 1px solid #ccc;
@@ -54,4 +56,46 @@
 .disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+.searchRow {
+    position: relative;
+}
+
+.dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 4px 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: 100%;
+    z-index: 999;
+}
+
+.option {
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+.option:hover {
+    background: #f5f5f5;
+}
+
+.sectionTitle {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: #777;
+}
+
+.subredditOption {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.subredditOption:hover {
+    background: #f5f5f5;
 }
