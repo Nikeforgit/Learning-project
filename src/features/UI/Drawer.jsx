@@ -7,7 +7,7 @@ export default function Drawer() {
     const {width, setWidth, mode } = useDrawer();
     const [isHovering, setIsHovering] = useState(false);
     const startX = useRef(null);
-    const SNAP_POINTS = [48, 320, 600];
+    const SNAP_POINTS = [48, 380, 600];
     const getNearestSnap = (value) => {
         return SNAP_POINTS.reduce((prev, curr) => 
           Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev

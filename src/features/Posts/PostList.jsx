@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams, useParams } from "react-router-dom";
 import { fetchSubRedditPosts, fetchSearchPosts } from "../../store/redditSlice";
@@ -8,15 +8,30 @@ export default function PostList() {
   const dispatch = useDispatch();
   const { subreddit } = useParams();
   const [searchParams] = useSearchParams();
+  const filters = {
+    scoreMin: Number(searchParams.get("scoreMin")) || null,
+    scoreMax: Number(searchParams.get("scoreMax")) || null,
+  };
   const query = searchParams.get("q");
   const sort = searchParams.get("sort") || "relevance";
   const t = searchParams.get("t") || "all";
   const { posts, loading, error, after } = useSelector((state) => state.reddit);
   const isFetching = useRef(false);
   const isSearchMode = Boolean(query);
-  const isSubredditMode = Boolean(subreddit);
+  const isSubredditMode = !query && Boolean(subreddit);
   const subredditFilter = searchParams.get("subreddit");
+  const filteredPosts = useMemo(() => {
+    return posts.filter(post => {
+    if (filters.scoreMin && post.score < filters.scoreMin) {return false};
+    if (filters.scoreMax && post.score > filters.scoreMax) {return false};
+    return true;
+  });
+}, [posts, filters]);
+  const prevQueryRef = useRef("");
 
+  useEffect(() => {
+    prevQueryRef.current = query;
+  }, [query]);
   useEffect(() => {
   if (isSearchMode) {
     dispatch(fetchSearchPosts({
@@ -42,7 +57,7 @@ export default function PostList() {
     const handleScroll = () => {
       const bottom = 
       window.innerHeight + window.scrollY >=
-      document.body.offsetHeight - 300;
+      document.documentElement.scrollHeight - 300;
     if (bottom && !loading && after && !isFetching.current) {
       isFetching.current = true;
 
@@ -69,7 +84,7 @@ export default function PostList() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [dispatch, query, sort, t, subreddit, subredditFilter]);
+  }, [dispatch, query, sort, t, subreddit, subredditFilter, after]);
 
   useEffect(() => {
     if (!loading) {
@@ -83,7 +98,7 @@ export default function PostList() {
   return (
     <div style={{ minHeight: "200vh" }}>
       <ul className="posts">
-        {posts.map((post) => (
+        {filteredPosts.map(post => (
           <Card key={post.id} post={post} />
         ))}
         {loading && <p>Loading...</p>}

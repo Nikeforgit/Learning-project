@@ -21,13 +21,13 @@ export const fetchSubRedditPosts = createAsyncThunk(
 
 export const fetchSearchPosts = createAsyncThunk(
   "reddit/fetchSearchPosts",
-  async ({ query, sort = "relevance", t = "all", after }) => {
+  async ({ query, sort = "relevance", t = "all", after, subreddit }) => {
     const base = subreddit
-    ? `/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t={t}&restrict_sr=1`
-    : `/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}`
+      ? `/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}&restrict_sr=1`
+      : `/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}`;
+
     const url = after ? `${base}&after=${after}` : base;
     const res = await fetch(url);
-    const q = subreddit ? `${query} subreddit:{subreddit}` : query;
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);
     }
