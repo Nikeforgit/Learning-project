@@ -1,57 +1,56 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams, useParams } from "react-router-dom";
+import { useSearchParams, useParams, useLocation } from "react-router-dom";
 import { fetchSubRedditPosts, fetchSearchPosts } from "../../store/redditSlice";
 import Card from "../Card/Card";
+
+function getSearchState(search) {
+    const params = new URLSearchParams(search);
+    return {
+      query: params.get("q"),
+      sort: params.get("sort") || "relevance",
+      t: params.get("t") || "all",
+      subreddit: params.get("subreddit"),
+      scoreMin: params.get("scoreMin") !== null ? Number(params.get("scoreMin")) : null,
+      scoreMax: params.get("scoreMax") !== null ? Number(params.get("scoreMax")) : null,
+    };
+  }
 
 export default function PostList() {
   const dispatch = useDispatch();
   const { subreddit } = useParams();
-  const [searchParams] = useSearchParams();
-  const filters = {
-    scoreMin: Number(searchParams.get("scoreMin")) || null,
-    scoreMax: Number(searchParams.get("scoreMax")) || null,
-  };
-  const query = searchParams.get("q");
-  const sort = searchParams.get("sort") || "relevance";
-  const t = searchParams.get("t") || "all";
+  const location = useLocation();
+  const {query, sort, t, subreddit: subredditFilter, scoreMin, scoreMax} = getSearchState(location.search);
   const { posts, loading, error, after } = useSelector((state) => state.reddit);
   const isFetching = useRef(false);
   const isSearchMode = Boolean(query);
   const isSubredditMode = !query && Boolean(subreddit);
-  const subredditFilter = searchParams.get("subreddit");
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
-    if (filters.scoreMin && post.score < filters.scoreMin) {return false};
-    if (filters.scoreMax && post.score > filters.scoreMax) {return false};
+  return posts.filter(post => {
+    if (scoreMin !== null && post.score < scoreMin) return false;
+    if (scoreMax !== null && post.score > scoreMax) return false;
     return true;
   });
-}, [posts, filters]);
+}, [posts, scoreMin, scoreMax]);
   const prevQueryRef = useRef("");
-
   useEffect(() => {
     prevQueryRef.current = query;
   }, [query]);
+
   useEffect(() => {
-  if (isSearchMode) {
+  if (query) {
     dispatch(fetchSearchPosts({
       query,
       sort,
       t,
       subreddit: subredditFilter
     }));
+  } else if (subreddit) {
+    dispatch(fetchSubRedditPosts({ subreddit }));
+  } else {
+    dispatch(fetchSubRedditPosts({ subreddit: "popular" }));
   }
-  else if (isSubredditMode) {
-    dispatch(fetchSubRedditPosts({
-      subreddit
-    }));
-  }
-  else {
-    dispatch(fetchSubRedditPosts({
-      subreddit: "popular"
-    }));
-  }
-}, [dispatch, query, sort, t, subreddit, subredditFilter]);
+}, [location.search, dispatch, subreddit]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,7 +83,7 @@ export default function PostList() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [dispatch, query, sort, t, subreddit, subredditFilter, after]);
+  }, [dispatch, query, sort, t, subreddit, subredditFilter]);
 
   useEffect(() => {
     if (!loading) {

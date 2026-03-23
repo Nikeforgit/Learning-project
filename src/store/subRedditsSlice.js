@@ -14,8 +14,7 @@ export const searchSubreddits = createAsyncThunk(
     async (query) => {
         const res = await fetch(`/subreddits/search.json?q=${query}&limit=5`);
         const json = await res.json();
-
-        return json.data.children.map(c => data);
+        return json.data.children.map(c => c.data);
     }
 );
 

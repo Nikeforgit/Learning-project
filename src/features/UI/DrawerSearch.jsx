@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useDispatch } from "react-redux";
+import ReactSlider from "react-slider";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from './DrawerSearch.module.css';
 import { searchSubreddits } from "../../store/subRedditsSlice";
@@ -13,12 +14,18 @@ export default function DrawerSearch() {
     const [postSuggestions, setPostSuggestions] = useState([]);
     const debounceQuery = useDebounce(query, 300);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [showScoreFilter, setShowScoreFilter] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const getNumberParam = (key) => {
-        const value = searchParams.get(key);
-        return value !== null ? null : Number(value);  
-    }
+    const getNumParam = (key, fallback = null) => {
+        const param = searchParams.get(key);
+        if (param === null) return fallback;
+        const n = Number(param);
+        return isNaN(n) ? fallback : n;  
+    };
+    const scoreMin = getNumParam("scoreMin", -10000);
+    const scoreMax = getNumParam("scoreMax", 10000);
+    const [range, setRange] = useState([scoreMin, scoreMax]);
     function FilterChip({label, onRemove}) {
         return (
             <div className="chip">
@@ -28,18 +35,20 @@ export default function DrawerSearch() {
         );
     }
     const filters = {
-        scoreMin: getNumberParam("scoreMin"), 
-        scoreMax: getNumberParam("scoreMax"),
-        commentsMin: getNumberParam("commentsMin"),
-        commentsMax: getNumberParam("commentsMax"),
-        ageMin: getNumberParam("ageMin"),
-        ageMax: getNumberParam("ageMax"),
+        scoreMin: getNumParam("scoreMin"), 
+        scoreMax: getNumParam("scoreMax"),
+        commentsMin: getNumParam("commentsMin"),
+        commentsMax: getNumParam("commentsMax"),
+        ageMin: getNumParam("ageMin"),
+        ageMax: getNumParam("ageMax"),
         subreddit: searchParams.get("subreddit")
     };
     const handleSubmit = (e) => {
         e.preventDefault();
         const trimmed = (query || "").trim();
         if (!trimmed) return;
+        const currentQuery = searchParams.get("q");
+        if (currentQuery === trimmed) return;
         const params = new URLSearchParams({
             q: trimmed,
             sort,
@@ -56,6 +65,9 @@ export default function DrawerSearch() {
         }
         setSearchParams(params);
     };
+    useEffect(() => {
+        setRange([scoreMin, scoreMax]);
+    }, [scoreMin, scoreMax]);
     useEffect(() => {
         const trimmed = (query || "").trim();
         if (!trimmed) return;
@@ -75,21 +87,41 @@ export default function DrawerSearch() {
         const loadSuggestions = async () => {
             try {
         const [subRes, postRes] = await Promise.all([
-        fetch(`/subreddits/search.json?q=${debounceQuery}&limit=3`),
-        fetch(`/search.json?q=${debounceQuery}&limit=3`)
-        ])
-        const subs = subRes.ok ? await subRes.json() : { data:{ children: [] }};
-        const posts = postRes.ok ? await postRes.json() : { data:{ children: []}};
-            setSubSuggestions(subs.data.children.map(c => c.data));
-            setPostSuggestions(posts.data.children.map(c => c.data));
-    } catch {
-        setSubSuggestions([]);
-        setPostSuggestions([]);
-    }
-    };
-    loadSuggestions();
+                    fetch(`/subreddits/search.json?q=${debounceQuery}&limit=3`),
+                    fetch(`/search.json?q=${debounceQuery}&limit=3`)
+                ])
+                const subs = subRes.ok ? await subRes.json() : { data:{ children: [] }};
+                const posts = postRes.ok ? await postRes.json() : { data:{ children: []}};
+                setSubSuggestions(subs.data.children.map(c => c.data));
+                setPostSuggestions(posts.data.children.map(c => c.data));
+            } catch {
+                setSubSuggestions([]);
+                setPostSuggestions([]);
+            }
+        };
+        loadSuggestions();
     }, [debounceQuery]);
     const isTimeEnabled = ["top", "controversial"].includes(sort);
+    const handleSliderChange = (newValues) => {
+        let [min, max] = newValues;
+        if (min > max) [min, max] = [max, min];
+        updateFilter("scoreMin", min);
+        updateFilter("scoreMax", max);
+    };
+    const handleInputMin = (e) => {
+        const value = Number(e.target.value);
+        if (isNaN(value)) return;
+        setRange(([_, max]) => [Math.min(value, max), max]);
+    };
+    const handleInputMax = (e) => {
+        const value = Number(e.target.value);
+        if (isNaN(val)) return;
+        setRange(([min, _]) => [min, Math.max(value, min)]);
+    };
+    const normalize = ([min, max]) => {
+        if (min > max) return [max, min];
+        return [min, max];
+    }
     return ( 
         <div className={ styles.container }>
             <form
@@ -177,9 +209,18 @@ export default function DrawerSearch() {
                     </button>
                 ))}
             </div>
-            <div className={styles.rangeWrapper}>
-                <input type="range" min="-5000" max="5000" value={filters.scoreMin ?? -5000} onChange={(e) => updateFilter("scoreMin", Number(e.target.value))} className={styles.range}/>
-                <input type="range" min="-5000" max="5000" value={filters.scoreMax ?? 5000} onChange={(e) => updateFilter("scoreMax", Number(e.target.value))} className={styles.range}/>
+            <div style={{padding: '20px', border: `1px solid #ddd`, borderRadius: `5px`, boxShadow: `0 0 5px rgba(0, 0, 0, 0.1)`}}>
+            <button id="show-button" onClick={() => setShowScoreFilter(!showScoreFilter)} style={{width: `100%`, padding: `10px`, marginBottom: `10px`}}>
+                {showScoreFilter ? `Hide filters` : `Show filters`}
+            </button>
+            {showScoreFilter && (
+            <div id="function-body">
+            <div className="range-wrapper">
+                <ReactSlider value={range} min={-10000} max={10000} onChange={setRange} onAfterChange={(values) => {const [min, max] = normalize(values); updateFilter("scoreMin", min); updateFilter("scoreMax", max)}} className={styles.slider} thumbClassName={styles.thumb} trackClassName={styles.track}/>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: `10px`}}>
+                <input type="number" value={range[0]} onChange={handleInputMin} placeholder="Min score"/>
+                <input type="number" value={range[1]} onChange={handleInputMax} placeholder="Max score"/>
             </div>
             <div className={styles.chips}>
                 {filters.scoreMin !== null && (
@@ -188,6 +229,9 @@ export default function DrawerSearch() {
                 {filters.scoreMax !== null && (
                     <FilterChip label={`Score < ${filters.scoreMax}`} onRemove={() => updateFilter("scoreMax", null)}/>
                 )}
+            </div>
+            </div>
+            )}
             </div>
         </div>
     </div>
