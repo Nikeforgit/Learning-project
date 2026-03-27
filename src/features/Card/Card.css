@@ -18,15 +18,6 @@ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica N
  align-self: center;
 }
 
-.card img {
-max-height: 512px;
-max-width: 100%;
-object-fit: contain;
-border-radius: 4px;
-margin-top: 8px;
-
-}
-
 .meta, .stats {
 color: rgb(120, 124, 126);
 display: flex;
@@ -48,6 +39,7 @@ font-size: 12px;
 
 .media img,
 .media video {
+    height: auto;
     width: 100%;
     border-radius: 4px;
     object-fit: contain;
@@ -55,22 +47,88 @@ font-size: 12px;
     display: block;
 }
 
+.media:hover .prev,
+.media:hover .next {
+    opacity: 0.7;
+}
+
+.media:hover .prev:hover,
+.media:hover .next {
+    opacity: 1;
+}
+
 .play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  font-size: 48px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.play:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.play:active {
+    transform: scale(0.95);
+}
+
+.prev, .next {
     position: absolute;
-    inset: 0;
-    margin: auto;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: none;
-    font-size: 48px;
+    top: 50%;
+    transform: translateY(-50%);
     background: rgba(0, 0, 0, 0.6);
     color: white;
+    border: none;
+    padding: 8px 12px;
     cursor: pointer;
-    top: 8px;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0.3;
+}
+.prev { left: 8px; }
+.next { right: 8px; }
+
+.gallery-counter {
+    position: absolute;
+    bottom: 8px;
     right: 8px;
-    place-items: center;
-    display: grid;
-    align-items: center;
-    justify-content: center;
+    color: white;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.gallery-counter {
+    transition: opacity 0.2s ease;
+}
+
+.media:hover .gallery-counter {
+    opacity: 1;
+}
+
+.text-content {
+    margin-top: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1c1c1c;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }

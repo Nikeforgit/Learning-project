@@ -56,7 +56,7 @@ export default function PostList() {
     const handleScroll = () => {
       const bottom = 
       window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 300;
+      document.documentElement.scrollHeight - 500;
     if (bottom && !loading && after && !isFetching.current) {
       isFetching.current = true;
 
