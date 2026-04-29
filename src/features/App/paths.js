@@ -1,4 +1,4 @@
-const Routes = {
+const paths = {
   feed: () => "/",
   subreddit: (name) => `/r/${name}`,
   post: (subreddit, postId) => 
@@ -6,4 +6,4 @@ const Routes = {
 };
 
 
-export default Routes;
+export default paths;

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams, useParams, useLocation } from "react-router-dom";
-import { fetchSubRedditPosts, fetchSearchPosts } from "../../store/redditSlice";
+import { useParams, useLocation } from "react-router-dom";
+import { fetchSubRedditPosts, fetchSearchPosts, clearPosts } from "../../store/redditSlice";
+import Fullscreen from "./fullscreen.jsx";
 import Card from "../Card/Card";
 
 function getSearchState(search) {
@@ -16,13 +17,16 @@ function getSearchState(search) {
     };
   }
 
-export default function PostList() {
+export default function PostList({subreddit: propSubreddit }) {
   const dispatch = useDispatch();
-  const { subreddit } = useParams();
+  const params = useParams();
   const location = useLocation();
+  const subreddit = propSubreddit || params.subreddit;
   const {query, sort, t, subreddit: subredditFilter, scoreMin, scoreMax} = getSearchState(location.search);
-  const { posts, loading, error, after } = useSelector((state) => state.reddit);
+  const { posts, loading, error, after, hasMore } = useSelector((state) => state.reddit);
   const isFetching = useRef(false);
+  const lastFetchTime = useRef(0);
+  const [activePost, setActivePost] = useState(null);
   const isSearchMode = Boolean(query);
   const isSubredditMode = !query && Boolean(subreddit);
   const filteredPosts = useMemo(() => {
@@ -32,10 +36,18 @@ export default function PostList() {
     return true;
   });
 }, [posts, scoreMin, scoreMax]);
-  const prevQueryRef = useRef("");
+
+useEffect(() => {
+    if (!loading) {
+      isFetching.current = false;
+    }
+  }, [loading]);
+
   useEffect(() => {
-    prevQueryRef.current = query;
-  }, [query]);
+    dispatch(clearPosts());
+    isFetching.current = false;
+    lastFetchTime.current = 0;
+  }, [dispatch, subreddit, query]);
 
   useEffect(() => {
   if (query) {
@@ -50,14 +62,18 @@ export default function PostList() {
   } else {
     dispatch(fetchSubRedditPosts({ subreddit: "popular" }));
   }
-}, [location.search, dispatch, subreddit]);
+}, [dispatch, query, sort, t, subreddit, subredditFilter]);
 
   useEffect(() => {
     const handleScroll = () => {
+      if (!hasMore || loading || isFetching.current) return;
       const bottom = 
-      window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 500;
-    if (bottom && !loading && after && !isFetching.current) {
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 500;
+      if (!bottom) return;
+      const now = Date.now();
+      if (now - lastFetchTime.current < 300) return;
+      lastFetchTime.current = now;
       isFetching.current = true;
 
       if (isSearchMode) {
@@ -79,28 +95,23 @@ export default function PostList() {
           after
         }));
       }
-    }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [dispatch, query, sort, t, subreddit, subredditFilter]);
-
-  useEffect(() => {
-    if (!loading) {
-      isFetching.current = false;
-    }
-  }, [loading]);
-
-  if (loading && posts.length === 0) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  }, [dispatch, query, sort, t, subreddit, subredditFilter, after, loading, hasMore, isSearchMode, isSubredditMode]);
 
   return (
-    <div style={{ minHeight: "200vh" }}>
+    <div>
       <ul className="posts">
         {filteredPosts.map(post => (
-          <Card key={post.id} post={post} />
+          <Card key={post.id} post={post} onOpen={setActivePost}/>
         ))}
-        {loading && <p>Loading...</p>}
+        {activePost && (
+          <Fullscreen post={activePost} onClose={() => setActivePost(null)} />
+        )}
+        {loading && posts.length > 0 && <p>Loading more...</p>}
+        {!hasMore && filteredPosts.length > 0 && <p>Nothing more available...</p>}
+        {!loading && filteredPosts.length === 0 && (<p>Nothing that matches your filter</p>)}
       </ul>
     </div>
   );

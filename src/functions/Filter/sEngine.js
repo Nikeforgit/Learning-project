@@ -53,10 +53,15 @@ export function sEngine(searchTerm, index, data, localIds = new Set(), mode = "O
         );
     }
     entries.forEach(([docId]) => {
-    const doc = data[docId];
-    score[docId] += Math.log1p(doc.score || 0);
-    const age = Date.now()/1000 - data[docId].created_utc;
-    score[docId] += 1 / (1 + age / 86400);
+      const doc = data[docId];
+      score[docId] += Math.log1p(doc.score || 0);
+      const age = Date.now()/1000 - data[docId].created_utc;
+      score[docId] += 1 / (1 + age / 86400);
+      const title = (doc.title || "").toLowerCase();
+      const queryStr = queryWords.join(" ");
+      if (title.includes(queryStr)) {
+        score[docId] += 5;
+      }
   });
 
   return entries

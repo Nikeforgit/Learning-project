@@ -1,0 +1,119 @@
+.fullscreen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    cursor: pointer;
+    animation: fadeIn 0.2s ease;
+}
+
+.fullscreen-content {
+    position: relative;
+    width: min(900px, 95%);
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    overflow-y: auto;
+    cursor: default;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.fullscreen-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 2000;
+    pointer-events: auto;
+}
+
+.fullscreen-close:hover {
+    background: rgba(0, 0, 0, 0.2);
+    transform: scale(1.1);
+}
+
+.fullscreen-header {
+    margin-bottom: 16px;
+}
+
+.fullscreen-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+}
+
+.fullscreen-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: #666;
+    flex-wrap: wrap;
+}
+
+.fullscreen-meta span {
+    display: flex;
+    align-items: center;
+}
+
+.fullscreen-meta a {
+    color: #0078d4;
+    text-decoration: none;
+}
+
+.fullscreen-meta a:hover {
+    text-decoration: underline;
+}
+
+.fullscreen-post-text {
+    margin: 16px 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1c1c1c;
+}
+
+.fullscreen-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 13px;
+    color: #666;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 600px) {
+    .fullscreen-content {
+        width: 98%;
+        max-height: 95vh;
+        padding: 16px;
+    }
+    .fullscreen-header h3 {
+        font-size: 18px;
+    }
+    .fullscreen-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

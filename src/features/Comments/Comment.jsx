@@ -1,5 +1,8 @@
 import { useState } from "react";
 import "../App/App.css";
+import "./comments.css";
+import { getMedia, renderTextWithLinks } from "../Posts/UnitedPost";
+import MediaUIRenderer from "../UI/unitedMediaUI";
 
 export default function Comment({ comment, depth = 0 }) {
     const [collapsed, setCollapsed] = useState(false);
@@ -9,6 +12,9 @@ export default function Comment({ comment, depth = 0 }) {
             setCollapsed(v => !v);
         }
     }
+    const date = new Date(comment.created_utc * 1000).toLocaleDateString();
+    const media = getMedia(comment, "comment");
+    const onlyLink = /^https?:\/\/[^\s]+$/.test(comment.body.trim());
     return (
         <li 
         style={{
@@ -30,8 +36,15 @@ export default function Comment({ comment, depth = 0 }) {
                         {collapsed ? "[+]" : "[-]"}
                     </span>
                 )}
-            </div>
-            {!collapsed && (<p className="comment-body">{comment.body}</p>)}
+                </div>
+                {!collapsed && (
+                <>
+                {!onlyLink && (
+                <p className="comment-body">{renderTextWithLinks(comment.body)}</p>
+                )}
+                {media && <MediaUIRenderer media={media}/>}
+                </>
+                )}
             {!collapsed && replies.length > 0 && (
                 <ul style={{ listStyle: "none", paddingLeft: 0 }}>
                     {replies.map(reply => (

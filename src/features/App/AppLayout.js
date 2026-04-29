@@ -12,9 +12,6 @@ export default function AppLayout() {
             <header>Exteddit</header>
             <nav> Browse(under construction)</nav>
             <main>
-            <Post />
-            <CardList />
-            <CommentsList />
             <Outlet/>
             </main>
             <Circle />

@@ -13,15 +13,10 @@ export default function SubredditPage({ defaultSubreddit }) {
   const posts = useSelector((state) => state.reddit.posts);
   const loading = useSelector((state) => state.reddit.loading);
 
-  useEffect(() => {
-    dispatch(clearPosts());
-    dispatch(fetchSubRedditPosts({ subreddit }));
-  }, [dispatch, subreddit]);
-
   return (
     <main>
       <h1>r/{subreddit}</h1>
-      <PostList posts={posts} loading={loading} />
+      <PostList subreddit={subreddit}/>
     </main>
   );
 }

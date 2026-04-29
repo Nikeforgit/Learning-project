@@ -26,7 +26,8 @@ export default function SearchOverlay() {
     return (
         <div className="overlay"  onClick={() => navigate(-1)}>
             <div className="overlay-content" style={{transform: `translateX(${offset}px)`}}
-            onClick={(e) => e.stopPropagation()} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+            onClick={(e) => e.stopPropagation()} onPointerDown={onPointerDown}
+             onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
                 <button  onClick={() => navigate(-1)}>
                     ≡
                 </button>

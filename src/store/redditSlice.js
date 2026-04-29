@@ -4,8 +4,8 @@ export const fetchSubRedditPosts = createAsyncThunk(
   "reddit/fetchSubRedditPosts",
   async ({ subreddit, after }) => {
     const url = after
-      ? `/r/${subreddit}.json?after=${after}`
-      : `/r/${subreddit}.json`;
+      ? `/r/${subreddit}.json?after=${after}&limit=25`
+      : `/r/${subreddit}.json?limit=25`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);
@@ -23,8 +23,8 @@ export const fetchSearchPosts = createAsyncThunk(
   "reddit/fetchSearchPosts",
   async ({ query, sort = "relevance", t = "all", after, subreddit }) => {
     const base = subreddit
-      ? `/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}&restrict_sr=1`
-      : `/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}`;
+      ? `/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}&restrict_sr=1&limit=25`
+      : `/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${t}&limit=25`;
 
     const url = after ? `${base}&after=${after}` : base;
     const res = await fetch(url);
@@ -35,7 +35,7 @@ export const fetchSearchPosts = createAsyncThunk(
     return {
       posts: json.data.children.map(c => c.data),
       after: json.data.after,
-      subreddit: `search|${query}|${sort}|${t}`,
+      subreddit: `search|${query}|${sort}|${t}|${subreddit || 'all'}`,
     };
   }
 );
@@ -48,6 +48,7 @@ const redditSlice = createSlice({
     error: null,
     after: null,
     currentSubreddit: null,
+    hasMore: true
   },
   reducers: {
     clearPosts(state) {
@@ -55,6 +56,8 @@ const redditSlice = createSlice({
       state.after = null;
       state.error = null;
       state.currentSubreddit = null;
+      state.hasMore = true;
+      state.loading = false;
     },
   },
   extraReducers: (builder) => {
@@ -65,42 +68,48 @@ const redditSlice = createSlice({
          state.posts = [];
          state.after = null;
          state.currentSubreddit = subreddit;
-      }
+         state.hasMore = true;
          state.loading = true;
+      }
          state.error = null;
       })
       .addCase(fetchSubRedditPosts.fulfilled, (state, action) => {
-         state.loading = false;
          if (state.currentSubreddit !== action.payload.subreddit) return;
          const existingIds = new Set(state.posts.map(p => p.id));
-         state.posts.push(
-          ...action.payload.posts.filter(p => !existingIds.has(p.id))
-        );
+         const newPosts = action.payload.posts.filter(p => !existingIds.has(p.id));
+         state.posts.push(...newPosts);
         state.after = action.payload.after;
+        if (action.payload.posts.length === 0) {
+          state.hasMore = false;
+        } else {
+          state.hasMore = true;
+        }
+        state.loading = false;
       })
       .addCase(fetchSubRedditPosts.rejected, (state, action) => {
           state.loading = false;
           state.error = action.error.message;
       })
       .addCase(fetchSearchPosts.pending, (state, action) => {
-        const { query, sort = "relevance", t = "all" } = action.meta.arg;
+        const { query, sort = "relevance", t = "all", after } = action.meta.arg;
         const subreddit = `search|${query}|${sort}|${t}`;
-        if (state.currentSubreddit !== subreddit) {
+        if (!after && state.currentSubreddit !== subreddit) {
         state.posts = [];
         state.after = null;
         state.currentSubreddit = subreddit;
-        }
+        state.hasMore = true;
         state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchSearchPosts.fulfilled, (state, action) => {
         state.loading = false;
         if (state.currentSubreddit !== action.payload.subreddit) return;
         const existingIds = new Set(state.posts.map(p => p.id));
-        state.posts.push(
-          ...action.payload.posts.filter(p => !existingIds.has(p.id))
-        );
+        const newPosts = action.payload.posts.filter(p => !existingIds.has(p.id));
+        state.posts.push(...newPosts);
         state.after = action.payload.after;
+        state.hasMore = !!action.payload.after;
       })
       .addCase(fetchSearchPosts.rejected, (state, action) => {
         state.loading = false;

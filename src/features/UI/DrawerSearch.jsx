@@ -54,7 +54,7 @@ export default function DrawerSearch() {
             sort,
             t
         });
-        navigate(`/?${params.toString()}`);
+        navigate(`/search?${params.toString()}`);
     };
     const updateFilter = (key, value) => {
         const params = new URLSearchParams(searchParams);
@@ -76,7 +76,7 @@ export default function DrawerSearch() {
             sort,
             t
         });
-        navigate(`/?${params.toString()}`);
+        navigate(`/search?${params.toString()}`);
     }, [sort, t]);
     useEffect(() => {
         if (!debounceQuery || debounceQuery.length < 2) {
@@ -87,8 +87,8 @@ export default function DrawerSearch() {
         const loadSuggestions = async () => {
             try {
         const [subRes, postRes] = await Promise.all([
-                    fetch(`/subreddits/search.json?q=${debounceQuery}&limit=3`),
-                    fetch(`/search.json?q=${debounceQuery}&limit=3`)
+                    fetch(`https://www.reddit.com/subreddits/search.json?q=${debounceQuery}&limit=3`),
+                    fetch(`https://www.reddit.com/search.json?q=${debounceQuery}&limit=3`)
                 ])
                 const subs = subRes.ok ? await subRes.json() : { data:{ children: [] }};
                 const posts = postRes.ok ? await postRes.json() : { data:{ children: []}};
@@ -115,7 +115,7 @@ export default function DrawerSearch() {
     };
     const handleInputMax = (e) => {
         const value = Number(e.target.value);
-        if (isNaN(val)) return;
+        if (isNaN(value)) return;
         setRange(([min, _]) => [min, Math.max(value, min)]);
     };
     const normalize = ([min, max]) => {
@@ -138,7 +138,7 @@ export default function DrawerSearch() {
                 <div className={styles.dropdown}>
                     <div
                     className={styles.option}
-                    onClick={() => navigate(`/?q=${query}`)}>
+                    onClick={() => navigate(`/search?q=${query}`)}>
                         Search for "{query}"
                     </div>
             {subSuggestions.length > 0 && (
@@ -216,7 +216,11 @@ export default function DrawerSearch() {
             {showScoreFilter && (
             <div id="function-body">
             <div className="range-wrapper">
-                <ReactSlider value={range} min={-10000} max={10000} onChange={setRange} onAfterChange={(values) => {const [min, max] = normalize(values); updateFilter("scoreMin", min); updateFilter("scoreMax", max)}} className={styles.slider} thumbClassName={styles.thumb} trackClassName={styles.track}/>
+                <ReactSlider value={range} min={-10000} max={10000} onChange={setRange}
+                 onAfterChange={(values) => {const [min, max] = normalize(values);
+                  updateFilter("scoreMin", min); updateFilter("scoreMax", max)}}
+                   className={styles.slider} thumbClassName={styles.thumb}
+                    trackClassName={styles.track}/>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: `10px`}}>
                 <input type="number" value={range[0]} onChange={handleInputMin} placeholder="Min score"/>
