@@ -1,5 +1,5 @@
-import SubredditPage from "./SubredditPage";
+import SubredditPage from "./SubredditPage.jsx";
 
 export default function FeedPage() {
-  return <SubredditPage defaultSubreddit="all" />;
+  return <SubredditPage defaultSubreddit="popular" />;
 }

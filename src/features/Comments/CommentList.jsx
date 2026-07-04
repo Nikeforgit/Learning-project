@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchComments } from "./commentsSlice.js";
 import Comment from "./Comment.jsx";
 
-
 export default function CommentList({ permalink }) {
     const dispatch = useDispatch();
     const commentState = useSelector(state => state.comments);
@@ -18,14 +17,11 @@ export default function CommentList({ permalink }) {
     
     if (loading && !comments) return <p>Loading...</p>;
     if (error) return <p>Error: {error}</p>
-
     return (
-            <ul>
-    {safeComments.map(c =>
-    c.kind === "t1" ? (
-      <Comment key={c.data.id} comment={c.data} />
-    ) : null
-         )}
+    <ul>
+    {safeComments.map(comment => (
+        <Comment key={comment.id} comment={comment} />
+    ))}
       </ul>
     );
 }

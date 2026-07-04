@@ -1,6 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import Card from "./Card";
+import Card from "./Card.jsx";
 
 export default function CardList() {
     const posts = useSelector((state) => state.reddit.posts);
@@ -9,9 +9,9 @@ export default function CardList() {
     }
     return (
         <ul>
-            {posts.map(post => (
-                <Card key={posts.id} post={post} />
-            ))}
+        {posts.map(post => (
+            <Card key={post.id} post={post} />
+        ))}
         </ul>
     );
 }

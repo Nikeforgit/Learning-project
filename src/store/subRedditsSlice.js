@@ -1,20 +1,27 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getSubreddits } from "../api/reddit";
-import { createAsyncThunk } from "@reduxjs/toolkit";
 
+const API_ROOT = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 export const fetchSubreddits = createAsyncThunk(
     "subReddits/fetchSubreddits",
-    async () => {
-        return await getSubreddits();
+    async (query) => {
+        return await getSubreddits(query);
     }
 );
 
 export const searchSubreddits = createAsyncThunk(
     "subreddits/search",
     async (query) => {
-        const res = await fetch(`/subreddits/search.json?q=${query}&limit=5`);
-        const json = await res.json();
-        return json.data.children.map(c => c.data);
+        try {
+            const response = await fetch(
+                `${API_ROOT}/api/subreddits?q=${encodeURIComponent(query)}&limit=5`);
+            if (!response.ok) { throw Error(`API error: ${response.status}`);}
+            const json = await response.json();
+            return Array.isArray(json) ? json : [];
+        } catch (error) {
+            console.error("searchSubreddits error:", error);
+            throw error;
+        }
     }
 );
 
@@ -34,7 +41,7 @@ export const subRedditsSlice = createSlice({
         })
         .addCase(fetchSubreddits.fulfilled, (state, action) => {
             state.loading = false;
-            state.subReddits = action.payload;
+            state.subReddits = Array.isArray(action.payload) ? action.payload : [];
         })
         .addCase(fetchSubreddits.rejected, (state) => {
             state.loading = false;

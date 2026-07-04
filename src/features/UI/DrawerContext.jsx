@@ -7,14 +7,24 @@ export function DrawerProvider({ children }) {
     const location = useLocation();
     const [width, setWidth] = useState(48);
     const [mode, setMode] = useState(null);
+    const [drawerType, setDrawerType] = useState(null);
+    const openDrawer = (type) => {
+        setDrawerType(type);
+    };
+    const closeDrawer = () => {
+        setDrawerType(null);
+    }
     useEffect(() => {
         if (location.pathname === "/search") {
             setMode("search");
             setWidth(420);
+        } else {
+            setMode(null);
+            setWidth(48);
         }
-    }, [location]);
+    }, [location.pathname]);
     return (
-        <DrawerContext.Provider value={{ width, setWidth, mode, setMode}} >
+        <DrawerContext.Provider value={{ width, setWidth, mode, setMode, drawerType, openDrawer, closeDrawer}} >
             {children}
         </DrawerContext.Provider>
     );

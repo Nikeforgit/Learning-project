@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import MediaUIRenderer from "../UI/unitedMediaUI";
-import { getMedia, renderTextWithLinks } from "./UnitedPost";
+import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
+import { getMedia, renderTextWithLinks } from "./UnitedPost.jsx";
 import "./fullscreen.css";
 
 export default function Fullscreen({ post, onClose }) {
@@ -8,7 +8,7 @@ export default function Fullscreen({ post, onClose }) {
     useEffect(() => {
       document.body.style.overflow = "hidden";
     const handleEscape = (e) => {
-        if (e.key === "Escape") {document.bosy.style.overflow = ""; onClose()};
+        if (e.key === "Escape") {document.body.style.overflow = ""; onClose()};
     };
     window.addEventListener("keydown", handleEscape);
     return () => {
@@ -22,7 +22,7 @@ export default function Fullscreen({ post, onClose }) {
   }
 
   return (
-    <div className="fullscreen" onClick={onClose}>
+    <div className="fullscreen" onClick={handleClose}>
       <div className="fullscreen-content" onClick={(e) => e.stopPropagation()}>
         <button className="fullscreen-close" onClick={(e) => {e.stopPropagation(); handleClose();}}>X</button>
         <div className="fullscreen-header">

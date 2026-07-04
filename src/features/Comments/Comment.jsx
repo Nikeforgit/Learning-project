@@ -1,10 +1,19 @@
-import { useState } from "react";
+
 import "../App/App.css";
 import "./comments.css";
-import { getMedia, renderTextWithLinks } from "../Posts/UnitedPost";
-import MediaUIRenderer from "../UI/unitedMediaUI";
+import { getMedia, renderTextWithLinks } from "../Posts/UnitedPost.jsx";
+import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
+import { useState, useRef, useEffect } from "react";
 
 export default function Comment({ comment, depth = 0 }) {
+    const textRef = useRef(null);
+    const [overflow, setOverflow] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+    useEffect(() => {
+        if (!textRef.current || expanded) return;
+        const el = textRef.current;
+        setOverflow(el.scrollHeight > el.clientHeight);
+    }, [expanded]);
     const [collapsed, setCollapsed] = useState(false);
     const replies = comment.replies?.data?.children?.filter(c => c.kind === "t1") ?? [];
     const toggle = () => {
@@ -15,14 +24,10 @@ export default function Comment({ comment, depth = 0 }) {
     const date = new Date(comment.created_utc * 1000).toLocaleDateString();
     const media = getMedia(comment, "comment");
     const onlyLink = /^https?:\/\/[^\s]+$/.test(comment.body.trim());
+    const hasDirectImageLink = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i.test(comment.body);
     return (
         <li 
-        style={{
-            marginLeft: depth * 16,
-            borderLeft: depth ? "2px solid #ddd" : "none",
-            paddingLeft: depth ? 8 : 0,
-            marginTop: 8,
-        }}>
+        className="comment">
             <div 
             onClick={toggle}
             style={{
@@ -40,13 +45,18 @@ export default function Comment({ comment, depth = 0 }) {
                 {!collapsed && (
                 <>
                 {!onlyLink && (
-                <p className="comment-body">{renderTextWithLinks(comment.body)}</p>
+                <>
+                <p ref={textRef} className={expanded ? "text-post collapse show-all" : "text-post collapse"}>{renderTextWithLinks(comment.body)}</p>
+                {overflow && (
+                    <button className="collapse-btn" onClick={(e) => {e.stopPropagation(); setExpanded(prev => !prev)}}>{expanded ? "Show less" : "Show more"}</button>
                 )}
-                {media && <MediaUIRenderer media={media}/>}
+                </>
+                )}
+                {media && !hasDirectImageLink && <MediaUIRenderer media={media}/>}
                 </>
                 )}
             {!collapsed && replies.length > 0 && (
-                <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+                <ul className="replies">
                     {replies.map(reply => (
                         <Comment
                         key={reply.data.id}

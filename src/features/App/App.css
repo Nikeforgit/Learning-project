@@ -47,10 +47,3 @@ ul {
 li {
   margin-bottom: 12px;
 }
-
-.comment-body {
-  max-width: 100%;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}

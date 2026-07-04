@@ -26,6 +26,7 @@ font-size: 12px;
     object-fit: contain;
     max-height: 512px;
     display: block;
+    aspect-ratio: 16 / 9;
 }
 
 .media:hover .prev,
@@ -101,15 +102,63 @@ font-size: 12px;
     opacity: 1;
 }
 
-.text-content {
+.comment {
+    margin-left: 16px;
+    border-left: 2px solid #ddd;
+    padding-left: 8px;
     margin-top: 8px;
+}
+
+.comment-body {
     font-size: 14px;
     line-height: 1.5;
     color: #1c1c1c;
+
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 
     display: -webkit-box;
     -webkit-line-clamp: 5;
     line-clamp: 5;
     -webkit-box-orient: vertical;
+
     overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@keyframes slideRight {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.replies {
+    padding-left: min(12px, 2vw);
+    border-left: 2px solid #e5e5e5;
+}
+
+.collapse {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.collapse-btn {
+    max-width: 100%;
+    height: px;
+    border-color: #1c1c1c;
+    border-radius: 6px;
+}
+
+.collapse.show-all{
+    display: block;
+    height: auto;
+    overflow: visible;
 }

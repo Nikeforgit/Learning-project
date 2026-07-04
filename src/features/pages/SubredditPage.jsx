@@ -1,8 +1,7 @@
-import { useEffect } from "react";
+
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { clearPosts, fetchSubRedditPosts } from "../../store/redditSlice";
-import PostList from "../Posts/PostList";
+import PostList from "../Posts/PostList.jsx";
 
 
 export default function SubredditPage({ defaultSubreddit }) {
@@ -16,7 +15,7 @@ export default function SubredditPage({ defaultSubreddit }) {
   return (
     <main>
       <h1>r/{subreddit}</h1>
-      <PostList subreddit={subreddit}/>
+      <PostList subreddit={subreddit} mode="subreddit"/>
     </main>
   );
 }

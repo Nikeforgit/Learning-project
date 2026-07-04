@@ -89,6 +89,7 @@ export default function MediaUIRenderer({ media }) {
                     playsInline
                     loop
                     preload="metadata"
+                    poster={media.preview}
                     className={loaded ? "loaded" : ""}
                     onLoadedData={() => setLoaded(true)}
                     onCanPlay={() => setLoaded(true)}

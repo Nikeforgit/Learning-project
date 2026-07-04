@@ -1,7 +1,7 @@
 
-import { useDrawer } from "./DrawerContext";
+import { useDrawer } from "./DrawerContext.jsx";
 import { useRef, useState } from  "react";
-import DrawerSearch from "./DrawerSearch";
+import DrawerSearch from "./DrawerSearch.jsx";
 
 export default function Drawer() {
     const {width, setWidth, mode } = useDrawer();

@@ -1,5 +1,5 @@
-import Drawer from "../UI/Drawer";
-import { DrawerProvider } from "../UI/DrawerContext";
+import Drawer from "../UI/Drawer.jsx";
+import { DrawerProvider } from "../UI/DrawerContext.jsx";
 
 export default function Layout() {
   return (

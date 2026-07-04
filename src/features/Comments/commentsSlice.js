@@ -3,13 +3,18 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 export const fetchComments = createAsyncThunk(
     "comments/fetchComments",
     async ({ permalink }) => {
-        const response = await fetch(`${permalink}.json`);
-        const json = await response.json();
-        return {
-            post: json[0].data.children[0].data,
-            comments: json[1].data.children,
-            permalink,
-        };
+        const API_ROOT = process.env.REACT_APP_API_URL || "http://localhost:5000";
+        const parts = permalink.split("/").filter(Boolean);
+        const subreddit = parts[1];
+        const postId = parts[3];
+        const response = await fetch(
+            `${API_ROOT}/api/comments/${subreddit}/${postId}`
+        );
+        if (!response.ok) {
+            throw new Error(`HTTp error ${response.status}`);
+        }
+        const comments = await response.json();
+        return { comments, permalink, };
     }
 );
 
@@ -34,7 +39,6 @@ export const commentsSlice = createSlice({
             if (state.currentPermalink !== action.payload.permalink) return;
             state.loading = false;
             state.byPermalink[action.payload.permalink] = action.payload.comments;
-            state.postsByPermalink[action.payload.permalink] = action.payload.post;
         })
         .addCase(fetchComments.rejected, (state, action) => {
             state.loading = false;

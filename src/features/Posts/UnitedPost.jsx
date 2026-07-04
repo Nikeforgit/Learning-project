@@ -1,5 +1,5 @@
 import { replace } from "react-router-dom";
-import MediaUIRenderer from "../UI/unitedMediaUI";
+import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
 
 function getPostMedia(post) {
     if (post.is_gallery && post.gallery_data && post.media_metadata) {

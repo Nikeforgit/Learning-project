@@ -32,15 +32,7 @@
     background: #0eafff;
 }
 
-.goButton:active {
-    border-radius: 6px; 
-}
 
-.filters {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
 .segment {
     display: flex;

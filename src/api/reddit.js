@@ -1,31 +1,37 @@
-export const API_ROOT = "";
+export const API_ROOT = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export const getSubredditPosts = async (subreddit) => {
-  const response = await fetch(`/r/${subreddit}.json`);
+  const response = await fetch(`${API_ROOT}/api/r/${subreddit}`);
   if (!response.ok) {
     throw new Error("Failure");
   }
   const json = await response.json();
-  return json.data.children.map((post) => post.data);
+  return json.posts;
 };
 
 export const getSubreddits = async () => {
-  const response = await fetch(`/subreddits.json`);
+  const response = await fetch(`${API_ROOT}/api/subreddits`);
   if (!response.ok) {
     throw new Error("Failure");
   }
   const json = await response.json();
-  return json.data.children.map((subreddit) => subreddit.data);
+  return json;
 };
 
 export const getPostComments = async (permalink) => {
-  const response = await fetch(`${permalink}.json`);
-  if (!response.ok) {
+  try {
+    const match = permalink.match(/\/r\/([^\/]+)\/comments\/([^\/]+)/);
+    if (!match) throw new Error("Invalid permalink");
+    const [, subreddit, postId] = match;
+    const response = await fetch(`${API_ROOT}/api/comments/${subreddit}/${postId}`);
+    if (!response.ok) {
     throw new Error("Failure");
   }
   const json = await response.json();
-  return json[1].data.children
-    .filter((item) => item.kind === "t1")
-    .map((item) => item.data);
+  return Array.isArray(json) ? json : [];
+  } catch (error) {
+    console.error("getPostComments error:", error);
+    return [];
+  }
 };
 

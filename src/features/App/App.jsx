@@ -1,5 +1,5 @@
 import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "./AppRoutes";
+import AppRoutes from "./AppRoutes.js";
 import "./App.css";
 import { DrawerProvider } from "../UI/DrawerContext.jsx";
 import Drawer from "../UI/Drawer.jsx";
