@@ -1,7 +1,7 @@
 
 import "../App/App.css";
 import "./comments.css";
-import { getMedia, renderTextWithLinks } from "../Posts/UnitedPost.jsx";
+import { renderTextWithLinks } from "../Posts/UnitedPost.jsx";
 import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
 import { useState, useRef, useEffect } from "react";
 
@@ -22,7 +22,7 @@ export default function Comment({ comment, depth = 0 }) {
         }
     }
     const date = new Date(comment.created_utc * 1000).toLocaleDateString();
-    const media = getMedia(comment, "comment");
+    const media = comment.media;
     const onlyLink = /^https?:\/\/[^\s]+$/.test(comment.body.trim());
     const hasDirectImageLink = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i.test(comment.body);
     return (

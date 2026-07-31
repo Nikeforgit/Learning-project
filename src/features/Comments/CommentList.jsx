@@ -9,7 +9,7 @@ export default function CommentList({ permalink }) {
     if (!commentState) {return null;}
     const { byPermalink, loading, error } = commentState;
     const comments = byPermalink[permalink];
-    const safeComments = comments ?? [];
+    const safeComments = comments?.comments ?? [];
     useEffect(() => {
         if (!permalink || comments) return;
         dispatch(fetchComments({ permalink }));

@@ -84,6 +84,7 @@ export default function MediaUIRenderer({ media }) {
                 <video
                     src={media.url}
                     key={media.url}
+                    controls
                     muted
                     autoPlay
                     playsInline

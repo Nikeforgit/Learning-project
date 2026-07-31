@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
-import { getMedia, renderTextWithLinks } from "./UnitedPost.jsx";
+import { renderTextWithLinks } from "./UnitedPost.jsx";
 import "./fullscreen.css";
 
 export default function Fullscreen({ post, onClose }) {
-    const media = getMedia(post, "post")
+    const media = post.media;
     useEffect(() => {
       document.body.style.overflow = "hidden";
     const handleEscape = (e) => {

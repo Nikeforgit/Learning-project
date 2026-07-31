@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getSubreddits } from "../api/reddit";
+import { getSubreddits } from "../api/reddit.js";
 
 const API_ROOT = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 export const fetchSubreddits = createAsyncThunk(

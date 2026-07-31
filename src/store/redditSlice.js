@@ -136,7 +136,6 @@ const redditSlice = createSlice({
         state.posts.push(...uniquePosts);
         state.after = action.payload.after;
         state.hasMore = Boolean(action.payload.after);
-        console.log({posts: state.posts.length, after: state.after, hasMore: state.hasMore});
       })
       .addCase(fetchSearchPosts.rejected, (state, action) => {
         state.loading = false;

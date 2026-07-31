@@ -268,6 +268,8 @@ export default function DrawerSearch() {
                     params.set("t", draft.t);
                     if (draft.score.min !== null) params.set("scoreMin", draft.score.min);
                     if (draft.score.max !== null) params.set("scoreMax", draft.score.max);
+                    if (draft.comment.min !== null) params.set("commentMin", draft.comment.min);
+                    if (draft.comment.max !== null) params.set("commentMax", draft.comment.max);
                     navigate(`/search?${params.toString()}`);}}>
                         Search for "{draft.query}"
                     </div>

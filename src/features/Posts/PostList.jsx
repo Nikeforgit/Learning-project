@@ -6,6 +6,8 @@ import { fetchUserPosts, fetchUserProfile, clearPosts as clearUserPosts } from "
 import Fullscreen from "./fullscreen.jsx";
 import Card from "../Card/Card.jsx";
 import useSEngine from "../../functions/Filter/useSEngine.js";
+import SideBar from "../SideBars/SideBar.jsx";
+import "./PostList.css";
 
 function getSearchState(search) {
     const params = new URLSearchParams(search);
@@ -21,7 +23,7 @@ function getSearchState(search) {
     };
   }
 
-export default function PostList({subreddit: propSubreddit, username: propUsername, mode = "reddit"}) {
+export default function PostList({subreddit: propSubreddit, username: propUsername, mode="reddit"}) {
   const params = useParams();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -110,7 +112,6 @@ useEffect(() => {
         }));
       break;
       case "user":
-
         dispatch(fetchUserPosts({
           username,
           after
@@ -132,20 +133,22 @@ useEffect(() => {
 
   if (loading && posts.length === 0) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
-
   return (
-    <div>
-      <ul className="posts">
+    <div className="post-layout">
+      <main className="posts">
         {filteredPosts.map(post => (
           <Card key={post.id} post={post} onOpen={setActivePost}/>
         ))}
-        {activePost && (
-          <Fullscreen post={activePost} onClose={() => setActivePost(null)} />
-        )}
         {loading && posts.length > 0 && <p>Loading more...</p>}
         {!hasMore && filteredPosts.length > 0 && <p>Nothing more available...</p>}
         {!loading && filteredPosts.length === 0 && posts.length > 0 && (<p>Nothing that matches your filter</p>)}
-      </ul>
+      </main>
+      {activePost && (
+          <Fullscreen post={activePost} onClose={() => setActivePost(null)} />
+        )}
+      <aside className="Sidebar">
+        <SideBar mode={mode}/>
+      </aside>
     </div>
   );
 }

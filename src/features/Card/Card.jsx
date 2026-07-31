@@ -2,7 +2,7 @@
 import "./Card.css";
 import paths from "../App/paths.js";
 import { Link } from "react-router-dom";
-import { getMedia, renderTextWithLinks } from "../Posts/UnitedPost.jsx";
+import { renderTextWithLinks } from "../Posts/UnitedPost.jsx";
 import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
 import { useRef, useState, useEffect } from "react";
 
@@ -15,8 +15,8 @@ useEffect(() => {
     const el = textRef.current;
     setOverflow(el.scrollHeight > el.clientHeight);
 }, [post.selftext, expanded]);
-const media = getMedia(post, "post");
-const date = new Date(post.created_utc * 1000).toLocaleDateString();
+const media = post.media;
+const date = new Date(post.created * 1000).toLocaleDateString();
 const profilePic = `https://api.dicebear.com/7.x/identicon/svg?seed=${post.author}`;
 const subredditIcon = `https://api.dicebear.com/7.x/identicon/svg?seed=${post.subreddit}`;
     return (

@@ -1,0 +1,14 @@
+.sidebar-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sidebar-title {
+    font-weight: 600;
+}
+
+.sidebar-list {
+    display: flex;
+    flex-direction: column;
+}

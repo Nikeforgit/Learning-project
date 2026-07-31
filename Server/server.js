@@ -1,6 +1,14 @@
 import express from 'express';
 import cors from 'cors';
-import { getPage, closeBrowser, warmUp } from './playwright.js';
+import { getPage, closeBrowser, warmUp, getSections} from './playwright.js';
+import { fetchRaw } from './fetchRaw.js';
+import { normalizePostListing,
+         normalizeCommentListing,
+         normalizeSubredditListing,
+         normalizeSubreddit,
+         normalizeUser,
+         normalizeAchievements,
+         normalizeTrophies } from './normalizePosts.js';
 
 const app = express();
 const cache = new Map();
@@ -11,74 +19,37 @@ app.use(express.json());
 let lastRequestTime = 0;
 const REQUEST_DELAY = 1000;
 
-async function browserFetch(url) {
-    const page = await getPage();
-    const context = page.context();
-    const maxAttempts = 3;
-    let lastErr = null;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-            const resp = await context.request.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-                    'Accept': 'application/json, text/javascript, */*; q=0.01',
-                    'Referer': 'https://www.reddit.com/'
-                },
-                timeout: 15000
-            });
-            const status = resp.status();
-            const headers = resp.headers();
-            const contentType = (headers['content-type'] || '').toLowerCase();
-            const text = await resp.text();
-
-            if (status >= 400) {throw new Error(`HTTP ${status} - ${text.slice(0, 200)}`);}
-            if (contentType.includes('application/json') || /^[\[{]/.test(text.trim())) {
-                try {
-                    return JSON.parse(text);
-                } catch (err) { throw new Error(`Invalid JSON (parse error): ${err.message}; snippet=${text.slice(0, 200)}`);}
-            }
-            throw new Error(`Non-JSON response (content-type=${contentType}) snippet=${text.slice(0, 200)}`);
-        } catch (err) {
-            lastErr = err;
-            console.warn(`[browserFetch] attempt ${attempt} failed for ${url}: ${err.message}`);
-            await new Promise(r => setTimeout(r, 300 * attempt));
-        }
-      }
-      throw lastErr;
-    };
-
-async function redditFetch(url) {
+export class UpstreamError extends Error {
+    constructor(message, raw) { super(message); this.raw = raw; }
+}
+ 
+export async function redditFetchJson(url) {
     const cached = cache.get(url);
-    if (cached && Date.now() - cached.timestamp < CACHE_TIME) {
-        return cached.data;
-    }
+    if (cached) return cached;
     const now = Date.now();
     const diff = now - lastRequestTime;
-    if (diff < REQUEST_DELAY) {
-        await new Promise(r => setTimeout(r, REQUEST_DELAY - diff));
-    }
+    if (diff < REQUEST_DELAY) await new Promise(r => setTimeout(r, REQUEST_DELAY - diff));
     lastRequestTime = Date.now();
-    const data = await browserFetch(url);
-    if (!data) throw new Error("Empty response from browserFetch")
-    cache.set(url, {
-        data,
-        timestamp: Date.now()
-    });
-   return data;
+    const raw = await fetchRaw(url);
+    if (raw.status >= 400) throw new UpstreamError('Upstream returned non-JSON', raw);
+    try {
+        const json = JSON.parse(raw.text);
+        cache.set(url, json);
+        return json;
+    } catch (err) {
+        throw new UpstreamError(`Invalid JSON: ${err.message}`, raw);
+    }
 }
 
-function normalizePosts(data) {
-    if (!data) return [];
-    if (Array.isArray(data)) {
-        for (const item of data) {
-            const children = item?.data?.children;
-            if (Array.isArray(children)) return children.map(c => data).filter(Boolean);
-        }
-        return [];
+async function redditFetch(url, normalizer = (x) => x, extras) {
+    const json = await redditFetchJson(url);
+    try {
+        return normalizer(json, extras);
+    } catch (err) {
+        const e =  new Error(`Normalizer error: ${err.message}`);
+        e.raw = json;
+        throw e;
     }
-    const children = data?.data?.children;
-    if (!Array.isArray(children)) return [];
-    return children.map(c => c.data).filter(Boolean);
 }
 
 app.get('/api/search', async (req, res) => {
@@ -93,13 +64,8 @@ app.get('/api/search', async (req, res) => {
         url.searchParams.set('t', t);
         url.searchParams.set('limit', '25');
         if (after) { url.searchParams.set('after', after); }
-        const data = await redditFetch(url.toString());
-        if (!data) {
-            console.error('redditFetch returned empty for', url.toString());
-            return res.status(502).json({ error: 'Empty response from upstream' });
-        }
-        const posts = normalizePosts(data);
-        res.json({ posts, after: data.data.after ?? null });
+        const result = await redditFetch(url.toString(), normalizePostListing);
+        res.json(result);
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).json({ error: error.message });
@@ -110,12 +76,8 @@ app.get('/api/comments/:subreddit/:postId', async (req, res) => {
     try {
         const { subreddit, postId } = req.params;
         const url = new URL(`https://www.reddit.com/r/${subreddit}/comments/${postId}.json`);
-        const data = await redditFetch(url.toString());
-        if (!Array.isArray(data) || !data[1]) return res.json([]);
-        const comments = data[1].data.children
-          .filter((item) => item.kind === "t1")
-          .map((item) => item.data);
-        res.json(comments);
+        const result = await redditFetch(url.toString(), normalizeCommentListing);
+        res.json(result);
     } catch (error) {
         console.error('Comments error:', error);
         res.status(500).json({ error: error.message });
@@ -130,15 +92,11 @@ app.get('/api/subreddits', async (req, res) => {
                 error: 'Query required'
             });
         }
-        const url = new URL(
-            'https://www.reddit.com/subreddits/search.json'
-        );
+        const url = new URL('https://www.reddit.com/subreddits/search.json');
         url.searchParams.set('q', q);
         url.searchParams.set('limit', '3');
-        const data = await redditFetch(url.toString());
-        if (!data || !data.data) return res.status(502).json({ error: `Unexpected upstream response`});
-        const subs = (data.data.children).map(c => c.data).filter(Boolean);
-        res.json(subs);
+        const result = await redditFetch(url.toString(), normalizeSubredditListing);
+        res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({
@@ -155,12 +113,39 @@ app.get('/api/r/:subreddit', async (req, res) => {
         const url = new URL(`https://www.reddit.com/r/${subreddit}.json`);
         url.searchParams.set('limit', limit);
         if (after) url.searchParams.set('after', after);
-        const data = await redditFetch(url.toString());
-        if (!data) return res.status(502).json({ error: 'Empty response from upstream'});
-        res.json({
-            posts: normalizePosts(data),
-            after: data?.data?.after ?? null
-        });
+        const result = await redditFetch(url.toString(), normalizePostListing);
+        res.json(result);
+    } catch (error) {
+        console.error('Subreddit error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/r/:subreddit/about', async (req, res) => {
+    try {
+        const { subreddit } = req.params;
+        const url = new URL(`https://www.reddit.com/r/${subreddit}/about.json`);
+        const api = await redditFetch(url.toString());
+        const page = await getPage();
+        await page.goto(`https://www.reddit.com/r/${subreddit}`, {waitUntil: 'networkidle'});
+        const result = normalizeSubreddit(api, extras);
+        res.json(result);
+    } catch (error) {
+        console.error('Subreddit error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/r/:subreddit/sidebar', async (req, res) => {
+    try {
+        console.log("Sidebar route hit:", req.params.subreddit);
+        const { subreddit } = req.params;
+        const page = await getPage();
+        await page.goto(`https://reddit.com/r/${subreddit}`,
+            {waitUntil: "networkidle"}
+        );
+        const sidebar = await getSections(page);
+        res.json(sidebar);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -174,11 +159,8 @@ app.get('/api/popular', async (req, res) => {
         const url = new URL('https://www.reddit.com/r/popular.json');
         url.searchParams.set('limit', limit);
         if (after) url.searchParams.set('after', after);
-        const data = await redditFetch(url.toString());
-        res.json({
-            posts: normalizePosts(data),
-            after: data.data.after
-        });
+        const result = await redditFetch(url.toString(), normalizePostListing);
+        res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -191,11 +173,8 @@ app.get('/api/user/:username', async (req, res) => {
         const { after, limit = '25' } = req.query;
         const url = new URL(`https://www.reddit.com/user/${username}.json`);
         if (after) url.searchParams.set('after', after);
-        const data = await redditFetch(url.toString());
-        res.json({
-            posts: normalizePosts(data),
-            after: data.data.after
-        });
+        const result = await redditFetch(url.toString(), normalizePostListing);
+        res.json(result);;
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -206,8 +185,11 @@ app.get('/api/user/:username/about', async (req, res) => {
     try {
         const { username } = req.params;
         const url = new URL(`https://www.reddit.com/user/${username}/about.json`);
-        const data = await redditFetch(url.toString());
-        res.json(data.data);
+        const page = await getPage();
+        await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
+        const extras = await fetchUserExtras(page);
+        const result = await redditFetch(url.toString(), normalizeUser, extras);
+        res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -218,8 +200,11 @@ app.get('/api/user/:username/trophies', async (req, res) => {
     try {
         const { username } = req.params;
         const url = new URL(`https://www.reddit.com/user/${username}/trophies.json`);
-        const data = await redditFetch(url.toString());
-        res.json(data.data);
+        const page = await getPage();
+        await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
+        const extras = await fetchUserExtras(page);
+        const result = await redditFetch(url.toString(), normalizeTrophies, extras);
+        res.json(result);
     } catch (error) {
         console.error('Trophy error:', error);
         res.status(500).json({ error: error.message });
@@ -230,8 +215,11 @@ app.get('/api/user/:username/achievements', async (req, res) => {
     try {
         const { username } = req.params;
         const url = new URL(`https://www.reddit.com/user/${username}/achievements.json`);
-        const data = await redditFetch(url.toString());
-        res.json(data.data);
+        const page = await getPage();
+        await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
+        const extras = await fetchUserExtras(page);
+        const result = await redditFetch(url.toString(), normalizeAchievements, extras);
+        res.json(result);
     } catch (error) {
         console.error('Achievements error:', error);
         res.status(500).json({ error: error.message });
