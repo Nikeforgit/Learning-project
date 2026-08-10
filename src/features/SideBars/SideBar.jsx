@@ -9,5 +9,5 @@ const bars = { reddit: HistoryBar, search: Searchbar, subreddit: SubredditBar, u
 
 export default function SideBar({mode = "reddit"}) {
     const BarMode = bars[mode] ?? HistoryBar;
-    return <BarMode />;
+    return <BarMode mode={mode}/>;
 }

@@ -1,14 +1,27 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export const fetchSideBar = createAsyncThunk(
-    "sidebar/fetch",
+    "sidebar/fetchSubreddit",
     async (subreddit) => {
          console.log("Fetching sidebar:", subreddit);
         const API_ROOT = process.env.REACT_APP_API_URL || "http://localhost:5000";
         const res = await fetch(
-            `${API_ROOT}/api/r/${subreddit}/sidebar`
+            `${API_ROOT}/api/r/${subreddit}/about`
         );
-         console.log("Sidebar status:", res.status);
+        if (!res.ok) {throw new Error(`HTTP ${res.status}`);}
+        return await res.json();
+    }
+);
+
+export const fetchUserBar = createAsyncThunk(
+    "sidebar/fetchUser",
+    async (username) => {
+         console.log("Fetching sidebar:", username);
+        const API_ROOT = process.env.REACT_APP_API_URL || "http://localhost:5000";
+        const res = await fetch(
+            `${API_ROOT}/api/user/${username}/about`
+        );
+        if (!res.ok) {throw new Error(`HTTP ${res.status}`);}
         return await res.json();
     }
 );
@@ -16,10 +29,10 @@ export const fetchSideBar = createAsyncThunk(
 export const sidebarSlice = createSlice({
     name: "sidebar",
     initialState: {
-        sections: [],
+        sidebar: null,
         loading: false,
         error: null,
-        currentSection: null,
+        currentKey: null,
     },
     reducers: {},
     extraReducers: (builder) => {
@@ -27,20 +40,26 @@ export const sidebarSlice = createSlice({
         .addCase(fetchSideBar.pending, (state, action) => {
             state.loading = true;
             state.error = null;
-            state.currentSection = action.meta.arg;
+            state.currentKey = `subreddit:${action.meta.arg}`;
         })
         .addCase(fetchSideBar.fulfilled, (state, action) => {
             state.loading = false;
-            const payload = action.payload ?? {};
-            if (Array.isArray(payload)) {
-                state.sections = payload;
-                state.meta = null;
-            } else {
-                state.sections = Array.isArray(payload.sections) ? payload.sections : [];
-                state.meta = payload.meta ?? null;
-            }
+            state.sidebar = action.payload;
         })
         .addCase(fetchSideBar.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.error.message;
+        })
+        .addCase(fetchUserBar.pending, (state, action) => {
+            state.loading = true;
+            state.error = null;
+            state.currentKey = `user:${action.meta.arg}`;
+        })
+        .addCase(fetchUserBar.fulfilled, (state, action) => {
+            state.loading = false;
+            state.sidebar = action.payload;
+        })
+        .addCase(fetchUserBar.rejected, (state, action) => {
             state.loading = false;
             state.error = action.error.message;
         });

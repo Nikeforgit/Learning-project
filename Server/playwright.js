@@ -4,24 +4,71 @@ import { chromium } from "playwright";
 let browser;
 let page;
 let warmed = false;
-const DEFAULT_TEXT_SELECTORS = [".i18n-translatable-text",
-             "h1", "h2", "h3", "h4", "span", "p", "a"];
+
+const SELECTORS = {
+    text: {
+    heading: [".i18n-translatable-text", "h1", "h2", "h3", "#title"],
+    body: ["p", "md", ".text-body-2"],
+    inline: [".text-body-2", "span",],
+    search: ['[data-testid="search-warnings"]'],
+    description: ['[data-testid="search-subreddit-desc-text"]',
+         '[data-testid="profile-description"]', '#-post-rtjson-content'],
+    bookmark: [".community-bookmark-title", ".text-body-2", "faceplate-tracker", "span", 'a[href*="developers.reddit.com/apps/"]'],
+    ruleTitle: ['summary .i18n-translatable-text'],
+    ruleSummary: ['details'],
+    ruleDescription: ['#-post-rtjson-content'],
+    trophy: ['ul[slot="initial-trophies"] li', 'ul[slot="additional-trophies"] li'],
+    preview: ['[data-testid="achievement-entrypoint-image-container"]'],
+    badge: ['achievement-badge'],
+    warning: ['[data-testid="search-warnings"]'],
+    },
+    image: {
+        avatar: ["img",],
+        icon: ["img", "svg",],
+        badge: ["svg", "img", "alt"],
+    },
+    links: {
+        default: ["a[href]"],
+        rules: ["a[href]", "#-post-rtjson-content", ]
+    },
+    flair: {default: [".flair-content", "inline"],},
+};
+const PARSERS = {
+    rules: parseRulesItem,
+    user: parseUserItem,
+    bookmark: parseBookmarkItem,
+    trophy: parseTrophyItem,
+    flair: parseFlair,
+    achievementPreview: parseAchievementPreview,
+    achievements: parseAchievementItem,
+};
 const CONFIGS = {
         subreddit: [
-            {id: "rules", title: "Community Rules", fetch: fetchRules},
-            {id: "moderators", title: "Community Moderators", fetch: fetchUsers},
-            {id: "links", title: "Useful links", fetch: fetchLink},
-            {id: "communityLinks", title: "Community Links", fetch: fetchCommunityLinks},
-            {id: "bookmarks", title: "Community Bookmarks", fetch: fetchBookmarks},
+            {id: "rules", match: ['faceplate-tracker[noun="rules"]', 'faceplate-expandable-section-helper'],
+                 selector: "details", parser: PARSERS.rules,},
+            {id: "moderators", match: ['faceplate-tracker[noun="user"]', 'a[href^="/user/"]'],
+                selector: 'a[href^="/user/"]', parser: PARSERS.user},
+            {id: "links", match: ['search-telemetry-tracker'], selector: "a[href]", parser: PARSERS.bookmark},
+            {id: "communityLinks", match: ["search-telemetry-tracker"], selector: 'a[href]', parser: PARSERS.bookmark},
+            {id: "bookmarks", match: ["community-menu"], selector: "faceplate-tracker", parser: PARSERS.bookmark},
+            {id: "apps", match: ['a[href*="developers.reddit.com/apps/"]'],
+                 selector: 'a[href*="developers.reddit.com/apps/"]', parser: PARSERS.bookmark}
             ],
         user: [
-            {id: "trophies", title: "Trophy Case", fetch: fetchTrophies},
-            {id: "User Flairs", title: "User Flairs", fetch: fetchUserFlairs},
+            {id: "trophies", match: ["shreddit-profile-trophy-list"],
+                 selector: 'ul[slot="initial-trophies"] li, ul[slot="additional-trophies"] li', parser: PARSERS.trophy},
+            {id: "User Flairs", match: ['[aria-label^="Flair:"]'], selector: '[aria-label^="Flair:"]', parser: PARSERS.flair},
+            {id: "achievementPreview", match: ['[data-testid="achievement-entrypoint-image-container"]'],
+                selector: '[data-testid="achievement-entrypoint-image-container"]', parser: PARSERS.achievementPreview,
+            },
+            {id: "achievements", match: 'faceplate-tracker[source="achievements"]',
+                 selector: 'achievement-badge', parser: PARSERS.achievements,},
             ]
         };
-const SUBREDDIT_CONFIGS = new Map(
-    CONFIGS.subreddit.map(config => [config.title, config])
-);
+
+export async function getSectionConfigs(type) {
+    return CONFIGS[type] ?? [];
+}
 
 export async function getPage() {
     if (page) return page;
@@ -73,153 +120,187 @@ export async function closeBrowser() {
 }
 export function isWarmed() { return warmed; }
 
-export async function extractImage(locator) {
+export async function extractImage(locator, selectors = SELECTORS.image.icon) {
     try {
-        const img = locator.locator('img');
-        const src = (await img.getAttribute("src")) ?? (await img.getAttribute("data-src"));
-        if (src) {return { icon: src, source: "img"}};
+        const list = Array.isArray(selectors)
+        ? selectors
+        : SELECTORS.image[selectors] ?? SELECTORS.image.icon;
 
-        const image = locator.locator('image');
-        const href = (await image.getAttribute("href"))
-                      ?? (await image.getAttribute("xlink:href"));
-        if (href) {return { icon: href, source: 'svg-image'}};
-
-        const iconEl = locator.locator('[icon], [data-icon], .icon, .profile-icon, .snoovatar');
-
-        const iconSvg = (await iconEl.locator('image').getAttribute("href"));
-        if (iconSvg) {return {icon: iconSvg, source: "icon-svg"};}
-
-        const iconImg = iconEl.locator("img");
-        const iconSrc = await iconImg.getAttribute("src");
-        if (iconSrc) {return {icon: iconSrc, source: "icon"};}
-
-        if (await iconEl.count()){
-        const bg = await iconEl.evaluate(el => getComputedStyle(el).backgroundImage); 
-        const match = bg.match(/url\(["']?(.*?)["']?\)/);
-        if (match) {return {icon: match[1], source: "background-image"};}
+        const img = locator.locator(list.join(", ")).first();
+        if (await img.count()) {
+            const src =
+             await img.getAttribute("src") ??
+             await img.getAttribute("data-src");
+            if (src) {
+                return { icon: src, source: "img"}
+            };
+        };
+        
+        const image = locator.locator('image').first();
+        if (await image.count()) {
+            const href =
+             await image.getAttribute("href") ??
+             await image.getAttribute("xlink:href");
+            if (href) {
+                return { icon: href, source: 'svg-image'}
+            }; 
         }
-        const rawImg = (await iconEl.getAttribute('data-icon')) ?? (await iconEl.getAttribute('src'));
-        if (rawImg) return {icon: rawImg, source: 'icon-attr'};
+
+        const iconEl = locator.locator(
+            '[icon], [data-icon], .icon, .profile-icon, .snoovatar').first();
+        if (await iconEl.count()) {
+            const iconSvg = iconEl.locator('image').first();
+            if (await iconSvg.count()) {
+              const href = 
+                    await iconSvg.getAttribute("href") ??
+                    await iconSvg.getAttribute("xlink:href");
+              if (href) {return {icon: href, source: "icon-svg"};}
+            };
+
+            const iconImg = iconEl.locator("img");
+            if (await iconImg.count()) {
+              const iconSrc = await iconImg.getAttribute("src");
+              if (iconSrc) {return {icon: iconSrc, source: "icon"};}  
+            };
+
+            const bg = await iconEl.evaluate(el => getComputedStyle(el).backgroundImage); 
+            const match = bg.match(/url\(["']?(.*?)["']?\)/);
+            if (match) {return {icon: match[1], source: "background-image"};}
+
+            const rawImg = (await iconEl.getAttribute('data-icon'))
+            ?? (await iconEl.getAttribute('src'));
+            if (rawImg) return {icon: rawImg, source: 'icon-attr'};
+        };
+
+        const altEl = locator.locator("[alt]").first();
+        const alt = await altEl.count()
+        ? await altEl.getAttribute("alt")
+        : null; 
         return {icon: null, source: null};
     } catch (err) {
-        console.warn(err?.message ?? err);
+        console.error(err);
         return {icon: null, source: null};
     } 
 };
 
-export async function extractText(locator, selectors = DEFAULT_TEXT_SELECTORS) {
+export async function extractText(locator, selectors = "inline") {
     try {
-        for (const selector of selectors) {
-            const element = locator.locator(selector);
-            if (await element.count()) {
-                const text = (await element.textContent())?.trim();
-                if (text) {return {text, source: selector};
-            }
+        const list = Array.isArray(selectors)
+        ? selectors
+        : SELECTORS.text[selectors] ?? SELECTORS.text.inline;
+        for (const selector of list) {
+            const nodes = locator.locator(selector);
+            if (!(await nodes.count())) continue;
+            const text = await nodes.first().textContent();
+            if (text?.trim()) {return {text: text.trim()};
             }
         }
-        return {text: null, source: null};
+        return {text: null};
     } catch (err) {
-        console.warn(err?.message ?? err);
-        return {text: null, source: null};
+        console.error(err);
+        return {text: null};
     }
 }
 
-export async function extractHref(anchor) {
+export async function extractHref(locator, selectors = "default") {
     try {
-        return await anchor.getAttribute("href");
+        const list = Array.isArray(selectors)
+        ? selectors
+        : SELECTORS.links[selectors] ?? SELECTORS.links.default;
+        for (const selectors of list) {
+            const links = locator.locator(selectors);
+            if (!(await links.count())) continue;
+            const href = await links.first().getAttribute("href");
+            if (href) {return {href}}
+        }
+        return {href: null};
     } catch {
+        console.error(err);
         return null;
     }
-}
-
-export async function extractHeading(locator) {
-    try {
-        const selectors = ["#title", "h2 .i18n-translatable-text", "h2", "h1"];
-        for (const selector of selectors) {
-            try {
-                const text = await locator.locator(selector).first().textContent();
-                if (text?.trim()) {
-                    return text.trim();
-                } 
-            } catch {}
-        }
-      return null;
-    } catch {return null;}
 }
 
 export async function extractFlair(locator) {
     try {
         const flair = locator.locator('[aria-label^="Flair:"]').first();
-        if (!(await flair.count())) return null;
+        if (!(await flair.count())) return {text: null, image: null, href: null, color: null};
         const container = flair.locator('xpath=ancestor::span[1]');
         const link = flair.locator('xpath=ancestor::a[1]');
-        const text = (await flair.innerText())?.trim();
-        const image = (await flair.locator('img').getAttribute("src")) ?? null;
-        const href = (await link.getAttribute("href")) ?? null;
+        const {text} = await extractText(flair, "inline");
+        const {icon: image} = await extractImage(flair, "icon") ?? null;
+        const {href} = await extractHref(flair) ?? null;
         const style = await container.getAttribute("style");
         const color = style?.match(/background-color:\s*([^;]+)/)?.[1] ?? null;
         return ({text, image, href, color});
     } catch (err) {
-        console.warn(err?.message ?? err);
-        return null;
+        console.error(err);
+        return {text: null, image: null, href: null, color: null};
     }
 }
 
-export async function extractWarning(item) {
+export async function extractWarning(locator, type = "search") {
     try {
-        return (await item.locator('[data-testid="search-warnings"]').count()) > 0;
+        return (await locator.locator('[data-testid="search-warnings"]').count()) > 0;
     } catch (err) {
-        console.warn(err?.message ?? err);
-        return null;
+        console.error(err);
+        return false;
     }
 }
 
-export async function extractName(item) {
+export async function extractNumber(locator) {
     try {
-        return item.locator("h3").textContent();
+        const number = locator.locator("faceplate-number").first();
+        if (!(await number.count())) return {number: null};
+        const value = await number.getAttribute("number")
+        return {number: value};
     } catch (err) {
-        console.warn(err?.message ?? err);
+        console.error(err);
         return null;
     }
 }
 
-export async function extractKarma(item) {
-    try {
-        return item.locator("faceplate-number").getAttribute("number").catch(() => null);
+export async function findSectionConfig(section, configs) {
+  try {
+    for (const config of configs) {
+        for (const selector of config.match ?? []) {
+            if (await section.locator(selector).count()) {
+                return config;
+            }
+        }
+    }
+    return null;
     } catch (err) {
-        console.warn(err?.message ?? err);
-        return null;
+    console.warn(err?.message ?? err);
+    return null;
     }
 }
 
-export async function extractDescription(item) {
-    try {
-        const description = await item.locator('[data-testid="search-subreddit-desc-text"], [data-testid="profile-description"]')
-        .textContent().catch(() => null);
-        return description?.trim() ?? "";
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return null;
-    }
-}
-
-export async function getSections(page, {debug = false} = {}) {
+export async function getSections(page, configs, {debug = false} = {}) {
     try {
         const sidebar = page.locator("#right-sidebar-container").first();
-        await sidebar.waitFor({state: "visible"});
-        const sections = sidebar.locator("section");
+        try {await sidebar.waitFor({state: "visible", timeout: 2000});} catch (e) {};
+        const container = sidebar.locator(".py-md");
+        const sections = container.locator(":scope > .px-md");
+        const count = await sections.count();
         const result = [];
-        for (let i = 0; i < await sections.count(); i++) {
+        for (let i = 0; i < count; i++) {
             const section = sections.nth(i);
-            const heading = await extractHeading(section);
-            console.log("Heading:", heading);
-            const config = SUBREDDIT_CONFIGS.get(heading);
-        console.log("5");
-            if (!config) continue;
-            result.push({id: config.id, title: heading,
-                 image: await extractImage(section), text: await extractText(section),
-                  href: await extractHref(section), flair: await extractFlair(section),
-                  items: await config.fetch(section)});
+            const {text: heading} = await extractText(section, "heading");
+            const config = await findSectionConfig(section, configs);
+            if (!config) {if (debug) {console.log(`Unknown section ${i}: "${heading}"`);
+        }
+        continue;
+        }
+            const items = await collectItems(section, config.selector, config.parser);
+            console.log({heading, config: config.id, items: items.length});
+            if (!items.length) continue;
+                result.push({
+                    id: config?.id,
+                    title: heading || config?.title || `Section ${i + 1}`,
+                    image: (await extractImage(section)).icon, text: (await (extractText(section))).text,
+                    href: await extractHref(section), flair: await extractFlair(section),
+                    items,
+                });
         }
         return result;
     } catch (err) {
@@ -230,12 +311,14 @@ export async function getSections(page, {debug = false} = {}) {
 
 export async function collectItems(section, selector, parser) {
     try {
-        const items = await section.locator(selector).all();
+        const items = await section.locator(selector);
+        const count = await items.count();
         const result = [];
-        for (const item of items) {
+        for (let i = 0; i < count; i++) {
+            const item = items.nth(i);
             try {
             const parsed = await parser(item);
-            if (parsed) {
+            if (parsed != null) {
             result.push(parsed);
             }
             } catch (err) {
@@ -251,9 +334,11 @@ export async function collectItems(section, selector, parser) {
 
 export async function parseBookmarkItem(item) {
     try {
-        const {text: title} = await extractText(item);
+        const {text: title} = await extractText(item, "bookmark");
+        const { icon } = await extractImage(item, "icon");
+        const {href} = await extractHref(item);
         return {
-            title, image: await extractImage(item), href: await extractHref(item),
+            title, image: icon, href,
         };
     } catch (err) {
         console.warn(err?.message, err);
@@ -263,15 +348,14 @@ export async function parseBookmarkItem(item) {
 
 export async function parseUserItem(item) {
     try {
-        return {
-            name: await extractName(item),
-            description: await extractDescription(item),
-            karma: await extractKarma(item),
-            avatar: await extractImage(item),
-            flair: await extractFlair(item),
-            href: await extractHref(item),
-            warning: await extractWarning(item),
-        };
+        const {text: name} = await extractText(item, "heading");
+        const {text: description} = await extractText(item, "description");
+        const {number: karma} = await extractNumber(item);
+        const {icon: avatar} = await extractImage(item, "avatar");
+        const flair = await extractFlair(item);
+        const {href} = await extractHref(item);
+        const warning = await extractWarning(item);
+        return {name, description, karma, avatar, flair, href, warning,};
     } catch (err) {
         console.warn(err?.message, err);
         return null;
@@ -280,13 +364,10 @@ export async function parseUserItem(item) {
 
 export async function parseRulesItem(item) {
     try {
-        const {text: title} = await extractText(item);
-        const {text: description} = await extractText(item, ["span", "h3", "md", "p"]);
-        return {
-            title,
-            description,
-            href: await extractHref(item),
-        };
+        const {text: title} = await extractText(item, "ruleTitle");
+        const {text: description} = await extractText(item, "ruleDescription");
+        const {href} = await extractHref(item, "rules");
+        return {title, description, href};
     } catch (err) {
         console.warn(err?.message, err);
         return null;
@@ -295,11 +376,9 @@ export async function parseRulesItem(item) {
 
 export async function parseAchievementPreview(item) {
     try {
-        const title = await item.locator("img").getAttribute("alt");
-        return {
-            title,
-            image: await extractImage(item),
-        };
+        const {icon: achievement, alt: title} = await extractImage(item, "icon");
+        const {href} = await extractHref(item);
+        return {title, achievement, href};
     } catch (err) {
         console.warn(err?.message, err);
         return null;
@@ -336,117 +415,21 @@ export async function openAchievementModal(page) {
 
 export async function parseTrophyItem(item) {
     try {
-        const title = await item.locator('img').getAttribute("alt");
-        const {icon: image} = await extractImage(item);
-        return {title, image};
+        const {text: title} = await extractText(item, "trophy");
+        const {icon: image} = await extractImage(item, 'icon');
+        const {href} = await extractHref(item);
+        return {title, image, href};
     } catch (err) {
         console.warn(err?.message, err);
         return null;
     }
 }
 
-export async function fetchRules(section) {
+export async function parseFlair(item) {
     try {
-    return collectItems(section,
-         'li, .rule, .faceplate-expandable-section-helper', parseRulesItem);
-} catch (err) {
-    console.warn('fetchRules error', err?.message ?? err);
-    return [];
-}
-};
-
-export async function fetchUsers(section) {
-    try {
-        return collectItems(section, 'a[href^="/user/"], a[href*="/user/"], search-telemetry-tracker',
-             parseUserItem);
+        return await extractFlair(item);
     } catch (err) {
-        console.warn('fetchUsers error', err?.message ?? err);
-        return [];
-    }
-};
-
-export async function fetchLink(section) {
-    try {
-        return collectItems(section, 'a[href]', parseBookmarkItem); 
-    } catch (err) {
-        console.warn('fetchLinks error', err?.message ?? err);
-        return [];
-    }
-};
-
-export async function fetchApps(section) {
-    try {
-        return collectItems(section,
-             'li, .presentation, .app-card, .app', parseBookmarkItem);
-    } catch (err) {
-        console.warn('fetchApps failed', err?.message ?? err);
-        return [];
-    }
-};
-
-export async function fetchProjects(section) {
-    try {
-        return collectItems(section, 'a[href]', parseBookmarkItem);
-    } catch (err) {
-        console.warn('fetchProjects failed', err?.message ?? err);
-        return [];
-    }
-};
-
-export async function fetchTrophies(section) {
-    try {
-        return collectItems(section,
-             'ul[slot="initial-trophies"] li, ul[slot="additional-trophies"] li',
-            parseTrophyItem);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
-    }
-} 
-
-export async function fetchAchievementsPreview(section) {
-    try {
-        return collectItems(section,
-             '[data-testid="achievement-entrypoint-image-container"]', parseAchievementPreview);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
-    }
-}
-
-export async function fetchAchievements(page) {
-    try {
-        const modal = await openAchievementModal(page);
-        return collectItems(modal, "achievement-badge", parseAchievementItem);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
-    }
-}
-
-export async function fetchBookmarks(section) {
-    try {
-        return collectItems(section, "faceplate-tracker", parseBookmarkItem);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
-    }
-}
-
-export async function fetchCommunityLinks(section) {
-    try {
-        return collectItems(section, 'a', parseBookmarkItem);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
-    }
-}
-
-export async function fetchUserFlairs(section) {
-    try {
-        return collectItems(section, '[aria-label^="Flair:"]', extractFlair);
-    } catch (err) {
-        console.warn(err?.message ?? err);
-        return [];
+        console.warn(err?.message, err);
+        return null;
     }
 }

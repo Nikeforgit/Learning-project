@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { getPage, closeBrowser, warmUp, getSections} from './playwright.js';
+import { getPage, closeBrowser, warmUp, getSections, getSectionConfigs} from './playwright.js';
 import { fetchRaw } from './fetchRaw.js';
 import { normalizePostListing,
          normalizeCommentListing,
@@ -25,7 +25,11 @@ export class UpstreamError extends Error {
  
 export async function redditFetchJson(url) {
     const cached = cache.get(url);
-    if (cached) return cached;
+    if (cached) {if (cached.expires > Date.now()) {
+        return cached.data;
+    }
+    cache.delete(url);
+    };
     const now = Date.now();
     const diff = now - lastRequestTime;
     if (diff < REQUEST_DELAY) await new Promise(r => setTimeout(r, REQUEST_DELAY - diff));
@@ -34,17 +38,17 @@ export async function redditFetchJson(url) {
     if (raw.status >= 400) throw new UpstreamError('Upstream returned non-JSON', raw);
     try {
         const json = JSON.parse(raw.text);
-        cache.set(url, json);
+        cache.set(url, {data: json, expires: Date.now() + CACHE_TIME});
         return json;
     } catch (err) {
         throw new UpstreamError(`Invalid JSON: ${err.message}`, raw);
     }
 }
 
-async function redditFetch(url, normalizer = (x) => x, extras) {
+async function redditFetch(url, normalizer = (x) => x) {
     const json = await redditFetchJson(url);
     try {
-        return normalizer(json, extras);
+        return normalizer(json);
     } catch (err) {
         const e =  new Error(`Normalizer error: ${err.message}`);
         e.raw = json;
@@ -127,25 +131,12 @@ app.get('/api/r/:subreddit/about', async (req, res) => {
         const url = new URL(`https://www.reddit.com/r/${subreddit}/about.json`);
         const api = await redditFetch(url.toString());
         const page = await getPage();
-        await page.goto(`https://www.reddit.com/r/${subreddit}`, {waitUntil: 'networkidle'});
-        const result = normalizeSubreddit(api, extras);
-        res.json(result);
-    } catch (error) {
-        console.error('Subreddit error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/r/:subreddit/sidebar', async (req, res) => {
-    try {
-        console.log("Sidebar route hit:", req.params.subreddit);
-        const { subreddit } = req.params;
-        const page = await getPage();
-        await page.goto(`https://reddit.com/r/${subreddit}`,
+        await page.goto(`https://www.reddit.com/r/${subreddit}`,
             {waitUntil: "networkidle"}
         );
-        const sidebar = await getSections(page);
-        res.json(sidebar);
+        const sidebar = await getSections(page, await getSectionConfigs("subreddit"));
+        const result = normalizeSubreddit(api, sidebar);
+        res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -185,13 +176,16 @@ app.get('/api/user/:username/about', async (req, res) => {
     try {
         const { username } = req.params;
         const url = new URL(`https://www.reddit.com/user/${username}/about.json`);
+        const api = await redditFetch(url.toString());
         const page = await getPage();
-        await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
-        const extras = await fetchUserExtras(page);
-        const result = await redditFetch(url.toString(), normalizeUser, extras);
+        await page.goto(`https://www.reddit.com/user/${username}`,
+            {waitUntil: "networkidle"}
+        );
+        const sidebar = await getSections(page, await getSectionConfigs("user"));
+        const result = normalizeUser(api, sidebar);
         res.json(result);
     } catch (error) {
-        console.error('Subreddit error:', error);
+        console.error('User error:', error);
         res.status(500).json({ error: error.message });
 }
 })
@@ -202,8 +196,7 @@ app.get('/api/user/:username/trophies', async (req, res) => {
         const url = new URL(`https://www.reddit.com/user/${username}/trophies.json`);
         const page = await getPage();
         await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
-        const extras = await fetchUserExtras(page);
-        const result = await redditFetch(url.toString(), normalizeTrophies, extras);
+        const result = await redditFetch(url.toString(), normalizeTrophies);
         res.json(result);
     } catch (error) {
         console.error('Trophy error:', error);
@@ -217,8 +210,7 @@ app.get('/api/user/:username/achievements', async (req, res) => {
         const url = new URL(`https://www.reddit.com/user/${username}/achievements.json`);
         const page = await getPage();
         await page.goto(`https://www.reddit.com/user/${username}`, {waitUntil: 'networkidle'});
-        const extras = await fetchUserExtras(page);
-        const result = await redditFetch(url.toString(), normalizeAchievements, extras);
+        const result = await redditFetch(url.toString(), normalizeAchievements);
         res.json(result);
     } catch (error) {
         console.error('Achievements error:', error);
