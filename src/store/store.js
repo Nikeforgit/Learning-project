@@ -4,6 +4,7 @@ import subRedditsSlice from "./subRedditsSlice.js"
 import commentsReducer from "../features/Comments/commentsSlice.js";
 import userReducer from "../features/Userpage/userSlice.js"
 import sidebarReducer from "../features/SideBars/sidebarSlice.js";
+import historyReducer from "./historySlice.js";
 
 const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ const store = configureStore({
     comments: commentsReducer,
     user: userReducer,
     sidebar: sidebarReducer,
+    history: historyReducer,
   }
 });
 export default store;

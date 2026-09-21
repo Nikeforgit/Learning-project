@@ -33,7 +33,6 @@
 }
 
 
-
 .segment {
     display: flex;
     gap: 6px;
@@ -65,15 +64,14 @@
 .dropdown {
     position: absolute;
     top: calc(100% + 4px);
-    left: 0;
-    right: 0;
     width: 100%;
+    max-height: 300px;
     padding: 4px 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 8px;
-    width: 100%;
     z-index: 999;
+    overflow-y: scroll;
 }
 
 .option {

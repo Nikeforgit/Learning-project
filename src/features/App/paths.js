@@ -3,6 +3,7 @@ const paths = {
   subreddit: (name) => `/r/${name}`,
   post: (subreddit, postId) => 
     `/r/${subreddit}/comments/${postId}`,
+  user: (name) => `/user/${name}`,
 };
 
 

@@ -1,6 +1,17 @@
 
 import { getMedia } from "./UnitedPost2.js";
 
+export function sectionsMap(sections = []) {
+    const map = {};
+    for (const section of sections) {
+        if (!section?.id) continue;
+        map[section.id] = {
+            ...section,
+            items: section.items ?? [],
+        };
+    } return map;
+}
+
 export function normalizePost(raw = {}) {
     if (typeof raw !== "object" || raw === null) return null;
     const createdUtc = raw.created_utc ?? raw.created ?? null;
@@ -76,20 +87,22 @@ export function normalizeComment(raw = {}) {
 }
 
 export function normalizeCommentListing(raw = []) {
-    if (!Array.isArray(raw) || !raw[1]) return { post: null, comments: [] };
+    if (!Array.isArray(raw) || !raw[1]) return { post: null, comments: [], after: null };
     const post = raw[0] ? normalizePost(raw[0].data.children[0].data) : null;
     const children = raw[1]?.data?.children ?? [];
     const comments = Array.isArray(children)
          ? children.filter(item => item.kind === "t1").map(item => normalizeComment(item.data)).filter(Boolean)
          : [];
-    return { post, comments };
+    return { post, comments, after: raw[1]?.data?.after ?? null };
 }
 
-export function normalizeSubreddit(raw = {}, extras = {}) {
+export function normalizeSubreddit(raw = {}, sections = {}) {
             const s = raw.data ?? raw;
             return {
                 id: s.id ?? null,
                 name: s.name ?? '',
+                author: s.author ?? '',
+                user: s.user ?? '',
                 display_name: s.display_name ?? s.name ?? null,
                 url: s.url ?? s.display_name_prefixed ?? null,
 
@@ -115,22 +128,13 @@ export function normalizeSubreddit(raw = {}, extras = {}) {
                      ? s.created_utc * 1000 : s.created != null
                      ? s.created * 1000 : null,
 
-                rules: extras.rules ?? [],
-                moderators: extras.moderators ?? [],
-                links: extras.links ?? [],
-                apps: extras.apps ?? [],
-
-                related: extras.related ?? [],
-                wiki: extras.wiki ?? null,
-                guide: extras.guide ?? null,
-                flairs: extras.flairs ?? {
-                       user: [],
-                       post: []
-                },
-                bookmarks: extras.bookmarks ?? [],
-                communityLinks: extras.communityLinks ?? [],
+                sections,
+                flairs: sections.flairs ?? {
+                    user: [],
+                    post: []
+                }
         }
-        console.log(JSON.stringify(sidebar, null, 2));
+
 }
 
 export function normalizeSubredditListing(raw = {}) {
@@ -143,14 +147,14 @@ export function normalizeSubredditListing(raw = {}) {
     };
 
 
-export function normalizeUser(raw = {}, extras = {}) {
-    const u = raw?.data ?? {};
+export function normalizeUser(raw = {}, sections = {}) {
+    const u = raw?.data ?? raw;
     return {
-        id: u.id ?? null,
-        name: u.name ?? null,
+        id: u.id ?? null,                                                                   
+        user: u.name ?? u.user ?? null,
         icon: u.icon_img ?? u.snoovatar_img ?? null,
         banner: u.subreddit?.banner_img ?? null,
-        karma: u.total_karma ?? u.link_karma ?? 0,
+        karma: u.total_karma ?? ((u.link_karma ?? 0) + (u.comment_karma ?? 0)),
         link_karma: u.link_karma ?? 0,
         comment_karma: u.comment_karma ?? 0,
         verified: !!u.verified,
@@ -159,10 +163,50 @@ export function normalizeUser(raw = {}, extras = {}) {
         followers: u.subreddit?.subscribers ?? null,
         online: u.subreddit?.active_user_count ?? null,
         description: u.subreddit?.public_description ?? u.subreddit?.description ?? '',
-        trophies: extras.trophies ?? [],
-        achievements: extras.achievements ?? [],
-        flairs: extras.flairs ?? [],
+        trophies: sections.subreddit?.trophies ?? '',
+        achievements: sections.subreddit?.achievements ?? '',
+        sections,
+        flairs: sections.flairs ?? {
+                    user: [],
+                    post: []
+                }
     };
+}
+
+export function normalizeUserListing(raw = {}) {
+    const children = raw?.data?.children ?? [];
+    return {
+        username: children.map(u => normalizeUser(u.data)).filter(Boolean),
+        after: raw?.data?.after ?? null
+        };
+    };
+
+export function normalizeSidebar(raw = {}, sections = {}) {
+    const s = raw?.data ?? {}
+    return {
+    id: s.id ?? null,
+    title: s.title ?? null,
+    Image: s.image_img ?? null,
+    icon: s.icon_img ?? s.snoovatar_img ?? null,
+    banner: s.subreddit?.banner_img ?? null,
+    karma: s.total_karma ?? s.link_karma ?? 0,
+    link_karma: s.link_karma ?? 0,
+    comment_karma: s.comment_karma ?? 0,
+    verified: !!s.verified,
+    created: s.created_utc ? s.created_utc * 1000 : null,
+    subreddit: s.subreddit?.display_name ?? null,
+    followers: s.subreddit?.subscribers ?? null,
+    online: s.subreddit?.active_user_count ?? null,
+    description: s.subreddit?.public_description ?? s.subreddit?.description ?? '',
+    trophies: sections.subreddit?.trophies ?? '',
+    achievements: sections.subreddit?.achievements ?? '',
+    sections,
+    flairs: sections.flairs ?? {
+                user: [],
+                post: []
+            }
+    }
+    
 }
 
 

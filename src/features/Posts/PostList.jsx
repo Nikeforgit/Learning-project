@@ -6,7 +6,6 @@ import { fetchUserPosts, fetchUserProfile, clearPosts as clearUserPosts } from "
 import Fullscreen from "./fullscreen.jsx";
 import Card from "../Card/Card.jsx";
 import useSEngine from "../../functions/Filter/useSEngine.js";
-import SideBar from "../SideBars/SideBar.jsx";
 import "./PostList.css";
 
 function getSearchState(search) {
@@ -46,8 +45,8 @@ export default function PostList({subreddit: propSubreddit, username: propUserna
   return searchedPosts.filter(post => {
     if (scoreMin !== null && post.score < scoreMin) return false;
     if (scoreMax !== null && post.score > scoreMax) return false;
-    if (commentMin !== null && post.comment < commentMin) return false;
-    if (commentMax !== null && post.comment > commentMax) return false;
+    if (commentMin !== null && post.comments < commentMin) return false;
+    if (commentMax !== null && post.comments > commentMax) return false;
     return true;
   });
 }, [searchedPosts, scoreMin, scoreMax, commentMin, commentMax, filtersEnabled]);
@@ -124,7 +123,7 @@ useEffect(() => {
         }));
       break;
       }
-    }, [dispatch, query, sort, t, subreddit, subredditFilter, username, after, loading, hasMore, mode]);
+    }, [dispatch,  sort, t, subreddit, subredditFilter, username, after, loading, hasMore, mode]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
@@ -146,9 +145,6 @@ useEffect(() => {
       {activePost && (
           <Fullscreen post={activePost} onClose={() => setActivePost(null)} />
         )}
-      <aside className="Sidebar">
-        <SideBar mode={mode}/>
-      </aside>
     </div>
   );
 }

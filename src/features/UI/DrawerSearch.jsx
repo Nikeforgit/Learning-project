@@ -6,6 +6,7 @@ import styles from './DrawerSearch.module.css';
 import { useDebounce } from "@uidotdev/usehooks";
 
 export default function DrawerSearch() {
+    const dispatch = useDispatch();
     const [draft, setDraft ] = useState({
         query: "",
         sort: "best",

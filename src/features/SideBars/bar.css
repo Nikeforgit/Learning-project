@@ -16,3 +16,45 @@
 .Section {
     background-color: #576f76;
 }
+
+.subreddit-sidebar {
+    color: rgb(51, 61, 66);
+    color-scheme: light;
+    position: sticky;
+    background-color: rgb(255, 255, 255);
+    width: 100%;
+    max-width: 316px;
+    display: flex;
+    font-size: 12px;
+    flex-direction: column;
+}
+
+.bookmarkbutton {
+    display: flex;
+    width: 100%;
+    color: #576f76;
+    border-radius: 50%;
+    font-size: 20px;
+    padding: 8px 10px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.bookmarkbutton:hover {
+    transform: scale(1.1);
+}
+.sidebarfilterflair {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 16px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

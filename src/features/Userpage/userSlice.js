@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_ROOT = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 export const fetchUserProfile = createAsyncThunk(
-  "reddit/fetchUserProfile",
+  "user/fetchUserProfile",
   async ({ username }) => {
    try {
     const url = new URL (`${API_ROOT}/api/user/${username}/about`);
@@ -22,7 +22,7 @@ export const fetchUserProfile = createAsyncThunk(
 );
 
 export const fetchUserPosts = createAsyncThunk(
-  "reddit/fetchUserPosts",
+  "user/fetchUserPosts",
   async ({ username, after }) => {
    try {
     const url = new URL(`${API_ROOT}/api/user/${username}`);
@@ -45,6 +45,21 @@ export const fetchUserPosts = createAsyncThunk(
 }
 );
 
+export const searchUsers = createAsyncThunk(
+  "user/searchUsers",
+  async (query) => {
+    try {
+    const response = await fetch(`${API_ROOT}/api/users?q=${encodeURIComponent(query)}&limit=5`);
+    if (!response.ok) {throw new Error(`API error: ${response.status}`);}
+    const json = await response.json();
+    return Array.isArray(json.username) ? json.username : [];
+    } catch (error) {
+      console.error("searchUsers error:", error);
+            throw error;
+    }
+  }
+)
+
 const userSlice = createSlice({
   name: "user",
   initialState: {
@@ -54,6 +69,7 @@ const userSlice = createSlice({
     error: null,
     after: null,
     currentUser: null,
+    searchUsers: [],
     hasMore: true
   },
   reducers: {
@@ -103,6 +119,18 @@ const userSlice = createSlice({
         state.after = action.payload.after;
       })
       .addCase(fetchUserPosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+      .addCase(searchUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(searchUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.searchUsers = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(searchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })

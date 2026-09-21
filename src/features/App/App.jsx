@@ -10,7 +10,6 @@ export default function App() {
   <BrowserRouter>
   <DrawerProvider>
     <AppRoutes />
-    <Drawer />
   </DrawerProvider>
   </BrowserRouter>
   </div>

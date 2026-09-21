@@ -1,7 +1,7 @@
 
 import { useParams } from "react-router-dom";
 import PostList from "../Posts/PostList.jsx";
-import { UserProfile } from "./UserProfile.jsx";
+import { UserProfile } from "../Userpage/UserProfile.jsx";
 
 function getProfileState(search) {
     const params = new URLSearchParams(search);

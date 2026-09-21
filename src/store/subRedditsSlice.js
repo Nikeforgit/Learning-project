@@ -17,7 +17,8 @@ export const searchSubreddits = createAsyncThunk(
                 `${API_ROOT}/api/subreddits?q=${encodeURIComponent(query)}&limit=5`);
             if (!response.ok) { throw Error(`API error: ${response.status}`);}
             const json = await response.json();
-            return Array.isArray(json) ? json : [];
+            console.log("SEARCH SUB JSON:", json);
+            return Array.isArray(json.subreddit) ? json.subreddit : [];
         } catch (error) {
             console.error("searchSubreddits error:", error);
             throw error;
@@ -29,6 +30,7 @@ export const subRedditsSlice = createSlice({
     name: "subReddits",
     initialState: {
     subReddits: [],
+    searchSubreddits: [],
     loading: false,
     error: false,
     selectedSubReddit: "",
@@ -44,6 +46,18 @@ export const subRedditsSlice = createSlice({
             state.subReddits = Array.isArray(action.payload) ? action.payload : [];
         })
         .addCase(fetchSubreddits.rejected, (state) => {
+            state.loading = false;
+            state.error = true;
+        })
+        .addCase(searchSubreddits.pending, (state) => {
+            state.loading = true;
+            state.error = false;
+        })
+        .addCase(searchSubreddits.fulfilled, (state, action) => {
+            state.loading = false;
+            state.searchSubreddits = Array.isArray(action.payload) ? action.payload : [];
+        })
+        .addCase(searchSubreddits.rejected, (state) => {
             state.loading = false;
             state.error = true;
         });

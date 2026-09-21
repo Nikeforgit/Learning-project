@@ -4,6 +4,7 @@ import { fetchSubRedditPosts } from "../../store/redditSlice.js";
 import Card from "../Card/Card.jsx";
 import CommentList from "../Comments/CommentList.jsx";
 import { useEffect } from "react";
+import{ addToHistory} from "../../store/historySlice.js";
 
 export default function PostPage() {
   const { subreddit, postId } = useParams();
@@ -17,6 +18,10 @@ export default function PostPage() {
       dispatch(fetchSubRedditPosts({ subreddit }));
     }
   }, [dispatch, subreddit, postId, post]);
+  useEffect(() => {
+    if (!post?.id) return;
+    dispatch(addToHistory(post));
+  }, [post?.id, dispatch]);
   return (
     <main>
       {post ? (

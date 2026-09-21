@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { renderTextWithLinks } from "../Posts/UnitedPost.jsx";
 import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
 import { useRef, useState, useEffect } from "react";
+import { toTimestamp } from "../../functions/date.js";
 
 export default function Card({ post, onOpen }) {
 const textRef = useRef(null);
@@ -16,7 +17,7 @@ useEffect(() => {
     setOverflow(el.scrollHeight > el.clientHeight);
 }, [post.selftext, expanded]);
 const media = post.media;
-const date = new Date(post.created * 1000).toLocaleDateString();
+const date = toTimestamp(post.created);
 const profilePic = `https://api.dicebear.com/7.x/identicon/svg?seed=${post.author}`;
 const subredditIcon = `https://api.dicebear.com/7.x/identicon/svg?seed=${post.subreddit}`;
     return (

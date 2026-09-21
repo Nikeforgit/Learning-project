@@ -2,16 +2,26 @@
 import { getPage } from "./playwright.js";
 
 export async function fetchRaw(url, { headers = {}, timeout = 15000, attempts = 3} = {}) {
+    console.log("FETCHRAW ENTER:", url);
     let lastErr = null;
     for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
             const page = await getPage();
-            const context = page.context();
-            const resp = await context.request.get(url, {headers, timeout});
-            const status = resp.status();
-            const respHeaders = resp.headers();
-            const text = await resp.text();
-            return { status, headers: respHeaders, text, url };
+            console.log("FETCHRAW BEFORE GET");
+            const result = await page.evaluate(async (url) => {
+                const resp = await fetch(url);
+                return {
+                    status: resp.status,
+                    contentType: resp.headers.get("content-type"),
+                    text: await resp.text(),
+                };
+            }, url);
+            console.log("FETCHRAW AFTER GET");
+            console.log("[fetchRaw] URL:", url);
+            console.log("[fetchRaw] STATUS:", result.status);
+            console.log("[fetchRaw] CONTENT-TYPE:", result.contentType);
+            console.log("[fetchRaw] BODY:", result.text.slice(0, 300));
+            return { status: result.status, headers: {"content-type": result.contentType}, text: result.text, url};
         } catch (err) {
             lastErr = err;
             console.warn(`[fetchRaw] attempt ${attempt} failed for ${url}: ${err.message}`);

@@ -4,6 +4,7 @@ import "./comments.css";
 import { renderTextWithLinks } from "../Posts/UnitedPost.jsx";
 import MediaUIRenderer from "../UI/unitedMediaUI.jsx";
 import { useState, useRef, useEffect } from "react";
+import { toTimestamp } from "../../functions/date.js";
 
 export default function Comment({ comment, depth = 0 }) {
     const textRef = useRef(null);
@@ -21,7 +22,7 @@ export default function Comment({ comment, depth = 0 }) {
             setCollapsed(v => !v);
         }
     }
-    const date = new Date(comment.created_utc * 1000).toLocaleDateString();
+    const date = toTimestamp(post.created);
     const media = comment.media;
     const onlyLink = /^https?:\/\/[^\s]+$/.test(comment.body.trim());
     const hasDirectImageLink = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))/i.test(comment.body);
@@ -36,6 +37,7 @@ export default function Comment({ comment, depth = 0 }) {
             }}
             >
                 <strong>{comment.author}</strong>
+                <span>{date}</span>
                 {replies.length > 0 && (
                     <span style={{ marginLeft: 6, fontSize: 12, color: "#666" }}>
                         {collapsed ? "[+]" : "[-]"}

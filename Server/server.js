@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import { getPage, closeBrowser, warmUp, getSections, getSectionConfigs} from './playwright.js';
+import { getPage, closeBrowser, warmUp, getSections, getSectionConfigs,
+     fetchSubredditWithPlaywright, fetchSidebarWithPlaywright, fetchSearchWithPlaywright,
+      fetchCommentsWithPlaywright} from './playwright.js';
 import { fetchRaw } from './fetchRaw.js';
 import { normalizePostListing,
          normalizeCommentListing,
@@ -8,7 +10,8 @@ import { normalizePostListing,
          normalizeSubreddit,
          normalizeUser,
          normalizeAchievements,
-         normalizeTrophies } from './normalizePosts.js';
+         normalizeTrophies,
+         normalizeUserListing, } from './normalizePosts.js';
 
 const app = express();
 const cache = new Map();
@@ -35,6 +38,8 @@ export async function redditFetchJson(url) {
     if (diff < REQUEST_DELAY) await new Promise(r => setTimeout(r, REQUEST_DELAY - diff));
     lastRequestTime = Date.now();
     const raw = await fetchRaw(url);
+    console.log("[API RAW STATUS]", raw.status);
+    console.log("[API RAW TYPE]", raw.headers["content-type"]);
     if (raw.status >= 400) throw new UpstreamError('Upstream returned non-JSON', raw);
     try {
         const json = JSON.parse(raw.text);
@@ -62,6 +67,7 @@ app.get('/api/search', async (req, res) => {
         if (!q) {
             return res.status(400).json({ error: `Query required` });
         }
+        try {
         const url = new URL('https://www.reddit.com/search.json');
         url.searchParams.set('q', q);
         url.searchParams.set('sort', sort);
@@ -70,6 +76,16 @@ app.get('/api/search', async (req, res) => {
         if (after) { url.searchParams.set('after', after); }
         const result = await redditFetch(url.toString(), normalizePostListing);
         res.json(result);
+        } catch (apiError) {
+            console.warn(`API search failed: ${apiError.message}`);
+            try {
+                const result = await fetchSearchWithPlaywright({q, sort, t, after, subreddit,});
+                res.json(result);
+            } catch (playwrightError) {
+                console.warn(`Playwright search failed:`, playwrightError);
+                res.status(500).json({error: "Failed to fetch search", api: apiError.message, playwright: playwrightError.message,});
+            }
+        }
     } catch (error) {
         console.error('Search error:', error);
         res.status(500).json({ error: error.message });
@@ -79,9 +95,27 @@ app.get('/api/search', async (req, res) => {
 app.get('/api/comments/:subreddit/:postId', async (req, res) => {
     try {
         const { subreddit, postId } = req.params;
-        const url = new URL(`https://www.reddit.com/r/${subreddit}/comments/${postId}.json`);
-        const result = await redditFetch(url.toString(), normalizeCommentListing);
-        res.json(result);
+        const {after} = req.query;
+        try {
+            const url = new URL(`https://www.reddit.com/r/${subreddit}/comments/${postId}.json`);
+            if (after) {url.searchParams.set("after", after);};
+            const result = await redditFetch(url.toString(), normalizeCommentListing);
+            res.json(result);
+            return;
+        } catch (apiError) {
+            console.warn(`API failed: ${subreddit}/${postId}:`, apiError.message);
+            try {
+                const result = await fetchCommentsWithPlaywright(subreddit, postId, {after});
+                res.json(result);
+            } catch (playwrightError) {
+                console.error(`Playwright comments failed:`, playwrightError);
+                res.status(500).json({
+                    error: "Failed to fetch comments",
+                    api: apiError.message,
+                    playwright: playwrightError.message,
+                });
+            }
+        }
     } catch (error) {
         console.error('Comments error:', error);
         res.status(500).json({ error: error.message });
@@ -114,11 +148,28 @@ app.get('/api/r/:subreddit', async (req, res) => {
     try {
         const { subreddit } = req.params;
         const { after, limit = '25' } = req.query;
-        const url = new URL(`https://www.reddit.com/r/${subreddit}.json`);
+        try {
+            const url = new URL(`https://www.reddit.com/r/${subreddit}.json`);
         url.searchParams.set('limit', limit);
         if (after) url.searchParams.set('after', after);
         const result = await redditFetch(url.toString(), normalizePostListing);
         res.json(result);
+        return;
+        } catch (apiError) {
+            console.warn(`[API] failed for r/${subreddit}: ${apiError.message}`);
+            try {
+                 const result = await fetchSubredditWithPlaywright(subreddit, {after, limit});
+                 res.json(result);
+                 return;
+            } catch (playwrightError) {
+                console.error(`[PLAYWRIGHT] failed for r/${subreddit}:`, playwrightError);
+                return res.status(500).json({
+                    error: "Failed to fetch subreddit posts",
+                    api: apiError.message,
+                    playwright: playwrightError.message,
+                });
+            }
+        }
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -128,14 +179,24 @@ app.get('/api/r/:subreddit', async (req, res) => {
 app.get('/api/r/:subreddit/about', async (req, res) => {
     try {
         const { subreddit } = req.params;
-        const url = new URL(`https://www.reddit.com/r/${subreddit}/about.json`);
-        const api = await redditFetch(url.toString());
-        const page = await getPage();
-        await page.goto(`https://www.reddit.com/r/${subreddit}`,
-            {waitUntil: "networkidle"}
-        );
-        const sidebar = await getSections(page, await getSectionConfigs("subreddit"));
-        const result = normalizeSubreddit(api, sidebar);
+        let api = null;
+        let sidebar = [];
+        try {
+            const url = new URL(`https://www.reddit.com/r/${subreddit}/about.json`);
+            api = await redditFetch(url.toString());
+        } catch (apiError) {
+            console.warn(`API about failed for r/${subreddit}: ${apiError.message}`);
+        }
+        try {
+            sidebar = await fetchSidebarWithPlaywright(subreddit);
+        } catch (playwrightError) {
+            console.warn(`Playwright sidebar failed for r/${subreddit}: ${playwrightError.message}`);
+        }
+        if (!api && !sidebar.length) {
+            return res.status(500).json({error: "Failed to fetch subreddit"});
+        }
+        const result = normalizeSubreddit(api ?? {}, sidebar);
+        console.log("NORMALIZED SIDEBAR:", result);
         res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
@@ -149,9 +210,26 @@ app.get('/api/popular', async (req, res) => {
         const { after, limit = '25' } = req.query;
         const url = new URL('https://www.reddit.com/r/popular.json');
         url.searchParams.set('limit', limit);
-        if (after) url.searchParams.set('after', after);
-        const result = await redditFetch(url.toString(), normalizePostListing);
-        res.json(result);
+        if (after) {url.searchParams.set('after', after)};
+        try {
+            const result = await redditFetch(url.toString(), normalizePostListing);
+            res.json(result);
+            return;
+        } catch (apiError) {
+            console.warn(`API failed for popular: ${apiError.message}`);
+            try {
+                const result = await fetchSubredditWithPlaywright('popular', {after, limit});
+                res.json(result);
+                return;
+            } catch (playwrightError) {
+                console.error(`Playwright failed for popular:`, playwrightError);
+                return res.status(500).json({
+                    error: "Failed to fetch popular posts",
+                    api: apiError.message,
+                    playwright: playwrightError.message,
+                });
+            }
+        }
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -165,7 +243,7 @@ app.get('/api/user/:username', async (req, res) => {
         const url = new URL(`https://www.reddit.com/user/${username}.json`);
         if (after) url.searchParams.set('after', after);
         const result = await redditFetch(url.toString(), normalizePostListing);
-        res.json(result);;
+        res.json(result);
     } catch (error) {
         console.error('Subreddit error:', error);
         res.status(500).json({ error: error.message });
@@ -188,7 +266,32 @@ app.get('/api/user/:username/about', async (req, res) => {
         console.error('User error:', error);
         res.status(500).json({ error: error.message });
 }
-})
+});
+
+app.get('/api/users', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) {
+            return res.status(400).json({
+                error: 'Query required'
+            });
+        }
+        const url = new URL('https://www.reddit.com/users/search.json');
+        url.searchParams.set('q', q);
+        url.searchParams.set('limit', '3');
+        const result = await redditFetch(url.toString(), normalizeUserListing);
+        console.log(
+    "NORMALIZED USER RESULT:",
+    JSON.stringify(result.username?.[0], null, 2)
+);
+        res.json(result);
+    } catch (error) {
+        console.error('User error:', error);
+        res.status(500).json({
+            error: error.message
+        });
+    }
+});
 
 app.get('/api/user/:username/trophies', async (req, res) => {
     try {
@@ -229,6 +332,7 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
     console.log(`Proxy server running on http://localhost:${PORT}`);
 });
+getPage().then(() => warmUp()).catch(err => console.error("Playywright warm-up failed:", err.message));
 
 let shuttingDown = false;
 const FORCE_KILL_TIMEOUT = 10000;

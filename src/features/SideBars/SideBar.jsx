@@ -6,8 +6,13 @@ import "./bar.css";
 
 
 const bars = { reddit: HistoryBar, search: Searchbar, subreddit: SubredditBar, user: UserBar};
-
+console.log("BARS:", bars);
 export default function SideBar({mode = "reddit"}) {
+    console.log("SIDEBAR RENDER:", mode);
     const BarMode = bars[mode] ?? HistoryBar;
-    return <BarMode mode={mode}/>;
+    console.log("SIDEBAR COMPONENT:", BarMode);
+    return (
+    <div className={`sidebar sidebar-${mode}`}>       
+      <BarMode mode={mode}/>
+    </div> );
 }
